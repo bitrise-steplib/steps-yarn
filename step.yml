@@ -14,7 +14,7 @@ type_tags:
 - npm
 - yarn
 is_always_run: false
-is_skippable: true
+is_skippable: false
 deps:
   brew:
   - name: node
