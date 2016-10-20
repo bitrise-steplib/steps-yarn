@@ -13,6 +13,7 @@ type_tags:
 deps:
   brew:
   - name: node
+  - name: yarn
 inputs:
   - workdir: $BITRISE_SOURCE_DIR
     opts:

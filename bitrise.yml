@@ -3,7 +3,7 @@ default_step_lib_source: https://github.com/jonoirwinrsa/steps-yarn.git
 
 app:
   envs:
-  - RELEASE_VERSION: 0.0.1
+  - RELEASE_VERSION: 0.0.2
 
 workflows:
   test:
@@ -27,6 +27,17 @@ workflows:
             go get -u github.com/bitrise-tools/releaseman
             export CI=true
             releaseman create --version "$RELEASE_VERSION"
+
+  # ----------------------------------------------------------------
+  # --- workflows to Share this step into a Step Library
+  audit-this-step:
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            stepman audit --step-yml ./step.yml
 
 # ----------------------------------------------------------------
 # --- workflows to Share this step into a Step Library
