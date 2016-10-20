@@ -5,11 +5,16 @@ website: https://github.com/jonoirwinrsa/steps-yarn
 source_code_url: https://github.com/jonoirwinrsa/steps-yarn
 support_url: https://github.com/jonoirwinrsa/steps-yarn/issues
 host_os_tags:
-- osx-10.10
+- osx-10.11
 project_type_tags:
-- react-native
+- ios
+- android
 type_tags:
+- react-native
+- npm
 - yarn
+is_always_run: false
+is_skippable: true
 deps:
   brew:
   - name: node
@@ -24,10 +29,13 @@ inputs:
   - command:
     opts:
       title: The `yarn` command to run
-      description: Specify the command to run with `yarn`. For example `add`.
+      description: |
+        Specify the command to run with `yarn`. For example `add`.
+        Leave it blank to install dependencies.
+      is_required: false
   - args:
     opts:
       title: Arguments for running `yarn` commands
       description: |-
         Arguments are added to the `yarn` command. You can specify multiple arguments, separated
-        by a space character. For example `-dd -ll`
+        by a space character. For example `global`

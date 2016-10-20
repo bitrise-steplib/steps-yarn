@@ -4,3 +4,7 @@
 ### 0.0.1 (2016 Oct 20)
 
 * [d12e256] first commit
+
+### 0.0.2 (2016 Oct 20)
+
+* [9b65131] Added audit-this-step. Checked for yarn dependency.
