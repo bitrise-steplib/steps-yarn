@@ -31,11 +31,17 @@ inputs:
       title: The `yarn` command to run
       description: |
         Specify the command to run with `yarn`. For example `add`.
-        Leave it blank to install dependencies.
+        Leave it and the options section blank to install all package dependencies.
       is_required: false
-  - args:
+  - options:
     opts:
-      title: Arguments for running `yarn` commands
+      title: Options for running `yarn` commands
       description: |-
-        Arguments are added to the `yarn` command. You can specify multiple arguments, separated
+        Options are added before the `yarn` command above. You can specify multiple options, separated
         by a space character. For example `global`
+    - arguements:
+      opts:
+        title: Arguements for running `yarn` commands
+        description: |-
+          Arguments are added after to the `yarn` command above. You can specify multiple arguments, separated
+          by a space character. For example `--ignore-engines`
