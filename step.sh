@@ -24,5 +24,4 @@ if [ ! -z "${workdir}" ] ; then
   fi
 fi
 
-# Run the yarn command with any options
-yarn ${options} ${command} ${arguements}
+yarn ${command} ${options}

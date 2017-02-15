@@ -44,10 +44,10 @@ workflows:
   share-this-step:
     envs:
       # if you want to share this step into a StepLib
-      - MY_STEPLIB_REPO_FORK_GIT_URL: $MY_STEPLIB_REPO_FORK_GIT_URL
+      - MY_STEPLIB_REPO_FORK_GIT_URL: https://github.com/SovTech/bitrise-steplib.git
       - STEP_ID_IN_STEPLIB: yarn
       - STEP_GIT_VERION_TAG_TO_SHARE: $RELEASE_VERSION
-      - STEP_GIT_CLONE_URL: $STEP_GIT_CLONE_URL
+      - STEP_GIT_CLONE_URL: https://github.com/jonoirwinrsa/steps-yarn.git
     description: |-
       If this is the first time you try to share a Step you should
       first call: $ bitrise share
