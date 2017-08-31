@@ -24,4 +24,5 @@ if [ ! -z "${workdir}" ] ; then
   fi
 fi
 
+set -x
 yarn ${command} ${options}
