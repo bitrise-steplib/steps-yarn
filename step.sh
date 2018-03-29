@@ -29,4 +29,4 @@ yarn --version
 echo ""
 
 set -x
-yarn ${command} ${options}
+yarn ${command} ${args}
