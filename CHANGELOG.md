@@ -27,3 +27,7 @@
 
 * [c179b90] Fixed input arguments - now will correctly run arguments added in Bitrise @viktorbenei
 * [6e2698c] Fix: removed incorrect project_type_tags and type_tags
+
+### 0.0.7 (2018 Mar 29)
+
+* [f3e70f8] Updated ubuntu installation to match instructions on https://yarnpkg.com/en/docs/install
