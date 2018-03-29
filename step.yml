@@ -6,13 +6,8 @@ source_code_url: https://github.com/jonoirwinrsa/steps-yarn
 support_url: https://github.com/jonoirwinrsa/steps-yarn/issues
 host_os_tags:
 - osx-10.11
-project_type_tags:
-- ios
-- android
 type_tags:
-- react-native
-- npm
-- yarn
+- dependency
 is_always_run: false
 is_skippable: false
 deps:
