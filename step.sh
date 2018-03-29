@@ -24,5 +24,9 @@ if [ ! -z "${workdir}" ] ; then
   fi
 fi
 
+echo "Yarn version:"
+yarn --version
+echo ""
+
 set -x
 yarn ${command} ${options}
