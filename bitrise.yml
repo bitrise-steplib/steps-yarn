@@ -4,10 +4,28 @@ default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 app:
   envs:
   - RELEASE_VERSION: 0.0.6
+  - SAMPLE_APP_URL: https://github.com/bitrise-samples/react-native-expo.git
 
 workflows:
   test:
     steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/bash
+            set -ex
+            rm -rf "./_tmp"
+            mkdir "_tmp"
+    - change-workdir:
+        title: Switch working dir to test / _tmp dir
+        run_if: true
+        inputs:
+        - path: ${BITRISE_SOURCE_DIR}/_tmp
+        - is_create_path: true
+    - script:
+        title: Clone sample app
+        inputs:
+        - content: git clone $SAMPLE_APP_URL .
     - path::./:
         inputs:
           # - workdir: $BITRISE_SOURCE_DIR
