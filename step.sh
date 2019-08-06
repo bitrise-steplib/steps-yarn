@@ -29,4 +29,9 @@ yarn --version
 echo ""
 
 set -x
-yarn ${command} ${args}
+message=$(yarn ${command} ${args})
+if [[ $message == *"There appears to be trouble with your network connection. Retrying..."* ]]; then
+  echo "Warning: Looks like you've got network issues while installing yarn."
+  echo "Please try to increase the timeout with --registry https://registry.npmjs.org --network-timeout [NUMBER] command before using this step (recommended value is 100000)."
+  echo "If issue still persists, please try to debug the error or reach out to support."
+fi
