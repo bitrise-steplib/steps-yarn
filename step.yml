@@ -14,6 +14,9 @@ deps:
   brew:
   - name: node
   - name: yarn
+toolkit:
+  go:
+    package_name: github.com/bitrise-steplib/steps-yarn
 inputs:
   - workdir: $BITRISE_SOURCE_DIR
     opts:

@@ -11,6 +11,10 @@ workflows:
     before_run:
     - audit-this-step
     steps:
+    - go-list:
+    - golint:
+    - errcheck:
+    - go-test:
     - script:
         inputs:
         - content: |-
@@ -33,6 +37,16 @@ workflows:
           # - workdir: $BITRISE_SOURCE_DIR
           # - command: install
           # - options: -d -ll
+
+  test-linux:
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -ex
+            docker build --tag bitrise-steps-yarn-test .
+            docker run --rm bitrise-steps-yarn-test
 
   audit-this-step:
     steps:
