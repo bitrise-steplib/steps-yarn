@@ -37,3 +37,27 @@ inputs:
       description: |-
         Arguments are added to the `yarn` command. You can specify multiple arguments, separated
         by a space character. For example `global`
+  - cache_local_deps: "no"
+    opts:
+      title: Cache node_modules
+      description: |-
+        Select if the contents of node_modules directory should be cached.
+
+        `yes`: Mark local dependencies to be cached.
+        `no`: Do not use cache.
+
+        All node_modules folders (recursively) located under the working directory will be cached.
+      is_required: true
+      value_options:
+      - "yes"
+      - "no"
+  - verbose_log: "no"
+    opts:
+      title: Enable verbose logging
+      description: |
+        Choose if debug logging is enabled.
+      is_required: true
+      value_options:
+      - "yes"
+      - "no"
+

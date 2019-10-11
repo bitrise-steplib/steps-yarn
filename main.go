@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/bitrise-io/go-steputils/cache"
 	"github.com/bitrise-io/go-steputils/stepconf"
 	"github.com/bitrise-io/go-utils/command"
 	"github.com/bitrise-io/go-utils/errorutil"
@@ -22,6 +23,8 @@ type config struct {
 	WorkingDir  string `env:"workdir,dir"`
 	YarnCommand string `env:"command"`
 	YarnArgs    string `env:"args"`
+	UseCache    string `env:"cache_local_deps,opt[yes,no]"`
+	IsDebugLog  string `env:"verbose_log,opt[yes,no]"`
 }
 
 func failf(format string, v ...interface{}) {
@@ -55,6 +58,7 @@ func main() {
 	}
 	stepconf.Print(config)
 	fmt.Println()
+	log.SetEnableDebugLog(config.IsDebugLog == "yes")
 
 	if path, err := exec.LookPath("yarn"); err != nil {
 		log.Infof("Yarn not installed. Installing...")
@@ -130,5 +134,31 @@ If issue still persists, please try to debug the error or reach out to support.`
 			failf("yarn command failed, error: %s", err)
 		}
 		failf("failed to run yarn command, error: %s", err)
+	}
+
+	if config.UseCache == "yes" && (len(commandParams) == 0 || commandParams[0] == "install") {
+		yarnCache := cache.New()
+		var cachePaths []string
+
+		if err := filepath.Walk(absWorkingDir, func(path string, fileInfo os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if fileInfo.IsDir() && fileInfo.Name() == "node_modules" {
+				cachePaths = append(cachePaths, path)
+				return filepath.SkipDir
+			}
+			return nil
+		}); err != nil {
+			failf("Failed to find node_modules directories, error: %s", err)
+		}
+
+		log.Debugf("Cached paths: %s", cachePaths)
+		for _, path := range cachePaths {
+			yarnCache.IncludePath(path)
+		}
+		if err := yarnCache.Commit(); err != nil {
+			failf("Failed to mark node_modeules directories to be cached, error: %s", err)
+		}
 	}
 }
