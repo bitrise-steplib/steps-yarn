@@ -51,6 +51,37 @@ sudo apt-get update && sudo apt-get install -y yarn`)
 	return installCmd, nil
 }
 
+func cacheYarn(workingDir string) error {
+	yarnCache := cache.New()
+	var cachePaths []string
+
+	// Supporting yarn workspaces (https://yarnpkg.com/lang/en/docs/workspaces/), for this recursively look
+	// up all node_modules directories
+	if err := filepath.Walk(workingDir, func(path string, fileInfo os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if fileInfo.IsDir() && fileInfo.Name() == "node_modules" {
+			cachePaths = append(cachePaths, path)
+			return filepath.SkipDir
+		}
+		return nil
+	}); err != nil {
+		failf("Failed to find node_modules directories, error: %s", err)
+	}
+
+	log.Debugf("Cached paths: %s", cachePaths)
+	for _, path := range cachePaths {
+		// yarnCache.IncludePath(fmt.Sprintf("%s -> %s", path, filepath.Join(absWorkingDir, "yarn.lock")))
+		yarnCache.IncludePath(path)
+	}
+
+	if err := yarnCache.Commit(); err != nil {
+		return fmt.Errorf("failed to mark node_modeules directories to be cached, error: %s", err)
+	}
+	return nil
+}
+
 func main() {
 	var config config
 	if err := stepconf.Parse(&config); err != nil {
@@ -137,29 +168,8 @@ If issue still persists, please try to debug the error or reach out to support.`
 	}
 
 	if config.UseCache == "yes" && (len(commandParams) == 0 || commandParams[0] == "install") {
-		yarnCache := cache.New()
-		var cachePaths []string
-
-		if err := filepath.Walk(absWorkingDir, func(path string, fileInfo os.FileInfo, err error) error {
-			if err != nil {
-				return err
-			}
-			if fileInfo.IsDir() && fileInfo.Name() == "node_modules" {
-				cachePaths = append(cachePaths, path)
-				return filepath.SkipDir
-			}
-			return nil
-		}); err != nil {
-			failf("Failed to find node_modules directories, error: %s", err)
-		}
-
-		log.Debugf("Cached paths: %s", cachePaths)
-		for _, path := range cachePaths {
-			// yarnCache.IncludePath(fmt.Sprintf("%s -> %s", path, filepath.Join(absWorkingDir, "yarn.lock")))
-			yarnCache.IncludePath(path)
-		}
-		if err := yarnCache.Commit(); err != nil {
-			failf("Failed to mark node_modeules directories to be cached, error: %s", err)
+		if err := cacheYarn(absWorkingDir); err != nil {
+			failf("%s", err)
 		}
 	}
 }
