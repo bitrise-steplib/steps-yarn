@@ -8,6 +8,11 @@ app:
   - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
 
 workflows:
+  ci:
+    after_run:
+    - test
+    - yarn-workspaces
+
   test:
     before_run:
     - audit-this-step
@@ -39,10 +44,8 @@ workflows:
           - command: install
           - args: -d -ll
           - cache_local_deps: "no"
-
+  
   yarn-workspaces:
-    envs:
-    - CACHE_URL: file://${ORIG_BITRISE_SOURCE_DIR}/_cache/cache-archive.tar
     steps:
     - script:
         inputs:
@@ -60,17 +63,11 @@ workflows:
         title: Clone sample app
         inputs:
         - content: git clone $YARN_WORKSPACES_SAMPLE .
-    - cache-pull:
-        run_if: "not .IsCI"
-        inputs:
-        - cache_api_url: $CACHE_URL
+    - cache-pull: {}
     - path::./:
         inputs:
           - cache_local_deps: "yes"
-    - cache-push:
-        run_if: "not .IsCI"
-        inputs:
-        - cache_api_url: $CACHE_URL
+    - cache-push: {}
 
 
   test-linux:
