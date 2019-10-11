@@ -155,6 +155,7 @@ If issue still persists, please try to debug the error or reach out to support.`
 
 		log.Debugf("Cached paths: %s", cachePaths)
 		for _, path := range cachePaths {
+			// yarnCache.IncludePath(fmt.Sprintf("%s -> %s", path, filepath.Join(absWorkingDir, "yarn.lock")))
 			yarnCache.IncludePath(path)
 		}
 		if err := yarnCache.Commit(); err != nil {
