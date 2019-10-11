@@ -42,8 +42,8 @@ func getInstallYarnCommand() (*command.Model, error) {
 
 	installCmd := command.New("sh", "-c", `curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
 echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-sudo apt-get update && sudo apt-get install yarn`)
-	installCmd.SetStdout(os.Stdout).SetStderr(os.Stderr).SetStdin(strings.NewReader("Y"))
+sudo apt-get update && sudo apt-get install -y yarn`)
+	installCmd.SetStdout(os.Stdout).SetStderr(os.Stderr)
 
 	return installCmd, nil
 }
