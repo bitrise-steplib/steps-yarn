@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -105,22 +107,26 @@ func main() {
 	}
 
 	yarnCmd := command.New("yarn", append(commandParams, args...)...)
-	yarnCmd.SetDir(absWorkingDir)
+	var output bytes.Buffer
+	outputWriter := io.MultiWriter(os.Stdout, &output)
+	yarnCmd.SetDir(absWorkingDir).SetStdout(outputWriter).SetStderr(outputWriter)
 
 	fmt.Println()
 	log.Donef("$ %s", yarnCmd.PrintableCommandArgs())
 	fmt.Println()
 
-	output, err := yarnCmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		if errorutil.IsExitStatusError(err) {
-			if strings.Contains(output, "There appears to be trouble with your network connection. Retrying...") {
-				fmt.Println()
-				log.Warnf(`Looks like you've got network issues while installing yarn.
+	defer func() {
+		if strings.Contains(output.String(), "There appears to be trouble with your network connection. Retrying...") {
+			fmt.Println()
+			log.Warnf(`Looks like you've got network issues while installing yarn.
 Please try to increase the timeout with --registry https://registry.npmjs.org --network-timeout [NUMBER] command before using this step (recommended value is 100000).
 If issue still persists, please try to debug the error or reach out to support.`)
-			}
-			failf("yarn command failed, output: %s", output)
+		}
+	}()
+
+	if err := yarnCmd.Run(); err != nil {
+		if errorutil.IsExitStatusError(err) {
+			failf("yarn command failed, error: %s", err)
 		}
 		failf("failed to run yarn command, error: %s", err)
 	}
