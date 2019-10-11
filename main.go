@@ -29,34 +29,23 @@ func failf(format string, v ...interface{}) {
 	os.Exit(1)
 }
 
-func installYarn() error {
+func getInstallYarnCommand() (*command.Model, error) {
 	if runtime.GOOS != "linux" {
-		return fmt.Errorf("Unsupported platform %s, failed to install yarn", runtime.GOOS)
+		return nil, fmt.Errorf("Unsupported platform %s, failed to install yarn", runtime.GOOS)
 	}
 	if _, err := os.Stat(path.Join("etc", "lsb-release")); err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("only Ubuntu distribution supported, failed to install yarn")
+			return nil, fmt.Errorf("only Ubuntu distribution supported, failed to install yarn")
 		}
-		return err
+		return nil, err
 	}
 
 	installCmd := command.New("sh", "-c", `curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
 echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
 sudo apt-get update && sudo apt-get install yarn`)
 	installCmd.SetStdout(os.Stdout).SetStderr(os.Stderr).SetStdin(strings.NewReader("Y"))
-	fmt.Println()
-	log.Donef("$ %s", installCmd.PrintableCommandArgs())
-	fmt.Println()
 
-	err := installCmd.Run()
-	if err != nil {
-		if errorutil.IsExitStatusError(err) {
-			failf("yarn install command failed, error: %s", err)
-		}
-		failf("Failed to run command, error: %s", err)
-	}
-
-	return nil
+	return installCmd, nil
 }
 
 func main() {
@@ -69,8 +58,20 @@ func main() {
 
 	if path, err := exec.LookPath("yarn"); err != nil {
 		log.Infof("Yarn not installed. Installing...")
-		if err := installYarn(); err != nil {
+		installCmd, err := getInstallYarnCommand()
+		if err != nil {
 			failf("%s", err)
+		}
+
+		fmt.Println()
+		log.Donef("$ %s", installCmd.PrintableCommandArgs())
+		fmt.Println()
+
+		if err := installCmd.Run(); err != nil {
+			if errorutil.IsExitStatusError(err) {
+				failf("yarn install command failed, error: %s", err)
+			}
+			failf("Failed to run command, error: %s", err)
 		}
 	} else {
 		log.Infof("Yarn is already installed at: %s", path)
