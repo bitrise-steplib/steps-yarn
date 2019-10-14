@@ -142,8 +142,8 @@ func main() {
 
 	yarnCmd := command.New("yarn", append(commandParams, args...)...)
 	var output bytes.Buffer
-	outputWriter := io.MultiWriter(os.Stdout, &output)
-	yarnCmd.SetDir(absWorkingDir).SetStdout(outputWriter).SetStderr(outputWriter)
+	yarnCmd.SetDir(absWorkingDir)
+	yarnCmd.SetStdout(io.MultiWriter(os.Stdout, &output)).SetStderr(io.MultiWriter(os.Stderr, &output))
 
 	fmt.Println()
 	log.Donef("$ %s", yarnCmd.PrintableCommandArgs())
