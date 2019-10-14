@@ -23,8 +23,8 @@ type config struct {
 	WorkingDir  string `env:"workdir,dir"`
 	YarnCommand string `env:"command"`
 	YarnArgs    string `env:"args"`
-	UseCache    string `env:"cache_local_deps,opt[yes,no]"`
-	IsDebugLog  string `env:"verbose_log,opt[yes,no]"`
+	UseCache    bool   `env:"cache_local_deps,opt[yes,no]"`
+	IsDebugLog  bool   `env:"verbose_log,opt[yes,no]"`
 }
 
 func failf(format string, v ...interface{}) {
@@ -34,11 +34,11 @@ func failf(format string, v ...interface{}) {
 
 func getInstallYarnCommand() (*command.Model, error) {
 	if runtime.GOOS != "linux" {
-		return nil, fmt.Errorf("Unsupported platform %s, failed to install yarn", runtime.GOOS)
+		return nil, fmt.Errorf("unsupported platform %s", runtime.GOOS)
 	}
 	if _, err := os.Stat(path.Join("etc", "lsb-release")); err != nil {
 		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("only Ubuntu distribution supported, failed to install yarn")
+			return nil, fmt.Errorf("only Ubuntu distribution supported")
 		}
 		return nil, err
 	}
@@ -67,12 +67,11 @@ func cacheYarn(workingDir string) error {
 		}
 		return nil
 	}); err != nil {
-		failf("Failed to find node_modules directories, error: %s", err)
+		return fmt.Errorf("failed to find node_modules directories, error: %s", err)
 	}
 
 	log.Debugf("Cached paths: %s", cachePaths)
 	for _, path := range cachePaths {
-		// yarnCache.IncludePath(fmt.Sprintf("%s -> %s", path, filepath.Join(absWorkingDir, "yarn.lock")))
 		yarnCache.IncludePath(path)
 	}
 
@@ -85,17 +84,17 @@ func cacheYarn(workingDir string) error {
 func main() {
 	var config config
 	if err := stepconf.Parse(&config); err != nil {
-		failf("Issue with input: %s", err)
+		failf("Invalid input: %s", err)
 	}
 	stepconf.Print(config)
 	fmt.Println()
-	log.SetEnableDebugLog(config.IsDebugLog == "yes")
+	log.SetEnableDebugLog(config.IsDebugLog)
 
 	if path, err := exec.LookPath("yarn"); err != nil {
 		log.Infof("Yarn not installed. Installing...")
 		installCmd, err := getInstallYarnCommand()
 		if err != nil {
-			failf("%s", err)
+			failf("Failed to get yarn install command, error: %s", err)
 		}
 
 		fmt.Println()
@@ -104,7 +103,7 @@ func main() {
 
 		if err := installCmd.Run(); err != nil {
 			if errorutil.IsExitStatusError(err) {
-				failf("yarn install command failed, error: %s", err)
+				failf("Yarn install command failed, error: %s", err)
 			}
 			failf("Failed to run command, error: %s", err)
 		}
@@ -124,22 +123,21 @@ func main() {
 	fmt.Println()
 	log.Donef("$ %s", versionCmd.PrintableCommandArgs())
 	fmt.Println()
-	err = versionCmd.Run()
-	if err != nil {
+	if err = versionCmd.Run(); err != nil {
 		if errorutil.IsExitStatusError(err) {
-			failf("yarn version command failed, error: %s", err)
+			failf("Yarn version command failed, error: %s", err)
 		}
 		failf("Failed to run command, error: %s", err)
 	}
 
 	commandParams, err := shellquote.Split(config.YarnCommand)
 	if err != nil {
-		failf("failed to split command arguments, error: %s", err)
+		failf("Failed to split command arguments, error: %s", err)
 	}
 
 	args, err := shellquote.Split(config.YarnArgs)
 	if err != nil {
-		failf("failed to split command arguments, error: %s", err)
+		failf("Failed to split command arguments, error: %s", err)
 	}
 
 	yarnCmd := command.New("yarn", append(commandParams, args...)...)
@@ -162,14 +160,14 @@ If issue still persists, please try to debug the error or reach out to support.`
 
 	if err := yarnCmd.Run(); err != nil {
 		if errorutil.IsExitStatusError(err) {
-			failf("yarn command failed, error: %s", err)
+			failf("Yarn command failed, error: %s", err)
 		}
-		failf("failed to run yarn command, error: %s", err)
+		failf("Failed to run yarn command, error: %s", err)
 	}
 
-	if config.UseCache == "yes" && (len(commandParams) == 0 || commandParams[0] == "install") {
+	if config.UseCache && (len(commandParams) == 0 || commandParams[0] == "install") {
 		if err := cacheYarn(absWorkingDir); err != nil {
-			failf("%s", err)
+			log.Warnf("Failed to cache node_modules, error: %s", err)
 		}
 	}
 }
