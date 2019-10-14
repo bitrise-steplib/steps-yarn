@@ -149,17 +149,14 @@ func main() {
 	log.Donef("$ %s", yarnCmd.PrintableCommandArgs())
 	fmt.Println()
 
-	defer func() {
-		if strings.Contains(output.String(), "There appears to be trouble with your network connection. Retrying...") {
-			fmt.Println()
-			log.Warnf(`Looks like you've got network issues while installing yarn.
-Please try to increase the timeout with --registry https://registry.npmjs.org --network-timeout [NUMBER] command before using this step (recommended value is 100000).
-If issue still persists, please try to debug the error or reach out to support.`)
-		}
-	}()
-
 	if err := yarnCmd.Run(); err != nil {
 		if errorutil.IsExitStatusError(err) {
+			if strings.Contains(output.String(), "There appears to be trouble with your network connection. Retrying...") {
+				fmt.Println()
+				log.Warnf(`Looks like you've got network issues while installing yarn.
+	Please try to increase the timeout with --registry https://registry.npmjs.org --network-timeout [NUMBER] command before using this step (recommended value is 100000).
+	If issue still persists, please try to debug the error or reach out to support.`)
+			}
 			failf("Yarn command failed, error: %s", err)
 		}
 		failf("Failed to run yarn command, error: %s", err)
