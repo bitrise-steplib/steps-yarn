@@ -1,20 +1,30 @@
-format_version: 1.0.0
+format_version: 9
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 app:
   envs:
-  - RELEASE_VERSION: 0.0.6
   - SAMPLE_APP_URL: https://github.com/bitrise-samples/react-native-expo.git
+  - YARN_WORKSPACES_SAMPLE: https://github.com/bitrise-io/sample-apps-yarn-workspaces.git
+  - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
 
 workflows:
+  ci:
+    after_run:
+    - test
+    - yarn-workspaces
+
   test:
     before_run:
     - audit-this-step
     steps:
+    - go-list:
+    - golint:
+    - errcheck:
+    - go-test:
     - script:
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/bin/env bash
             set -ex
             rm -rf "./_tmp"
             mkdir "_tmp"
@@ -27,19 +37,58 @@ workflows:
     - script:
         title: Clone sample app
         inputs:
-        - content: git clone $SAMPLE_APP_URL .
+        - content: |-
+            #!/bin/env bash
+            set -ex
+            git clone $SAMPLE_APP_URL .
     - path::./:
         inputs:
-          # - workdir: $BITRISE_SOURCE_DIR
-          # - command: install
-          # - options: -d -ll
+          - workdir: $BITRISE_SOURCE_DIR
+          - command: install
+          - args: -d -ll
+          - cache_local_deps: "no"
+  
+  yarn-workspaces:
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -ex
+            rm -rf "./_tmp"
+            mkdir "_tmp"
+    - change-workdir:
+        title: Switch working dir to test / _tmp dir
+        inputs:
+        - path: ${BITRISE_SOURCE_DIR}/_tmp
+        - is_create_path: true
+    - script:
+        title: Clone sample app
+        inputs:
+        - content: git clone $YARN_WORKSPACES_SAMPLE .
+    - cache-pull: {}
+    - path::./:
+        inputs:
+          - cache_local_deps: "yes"
+    - cache-push: {}
+
+
+  test-linux:
+    steps:
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -ex
+            docker build --tag bitrise-steps-yarn-test .
+            docker run --rm bitrise-steps-yarn-test
 
   audit-this-step:
     steps:
     - script:
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/bin/env bash
             set -ex
             stepman audit --step-yml ./step.yml
 
