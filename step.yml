@@ -33,4 +33,4 @@ inputs:
       title: Arguments for running `yarn` commands
       description: |-
         Arguments are added to the `yarn` command. You can specify multiple arguments, separated
-        by a space character. For example `global`
+        by a space character. For example `react` or `-dev`
