@@ -24,7 +24,7 @@ workflows:
     - script:
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/bin/env bash
             set -ex
             rm -rf "./_tmp"
             mkdir "_tmp"
@@ -37,7 +37,10 @@ workflows:
     - script:
         title: Clone sample app
         inputs:
-        - content: git clone $SAMPLE_APP_URL .
+        - content: |-
+            #!/bin/env bash
+            set -ex
+            git clone $SAMPLE_APP_URL .
     - path::./:
         inputs:
           - workdir: $BITRISE_SOURCE_DIR
@@ -50,7 +53,7 @@ workflows:
     - script:
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/bin/env bash
             set -ex
             rm -rf "./_tmp"
             mkdir "_tmp"
@@ -85,7 +88,7 @@ workflows:
     - script:
         inputs:
         - content: |-
-            #!/bin/bash
+            #!/bin/env bash
             set -ex
             stepman audit --step-yml ./step.yml
 
