@@ -36,7 +36,7 @@ inputs:
       title: Arguments for running `yarn` commands
       description: |-
         Arguments are added to the `yarn` command. You can specify multiple arguments, separated
-        by a space character. For example `global`
+        by a space character. For example `react` or `-dev`
   - cache_local_deps: "no"
     opts:
       title: Cache node_modules
@@ -60,4 +60,3 @@ inputs:
       value_options:
       - "yes"
       - "no"
-
