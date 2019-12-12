@@ -70,6 +70,15 @@ workflows:
     - path::./:
         inputs:
           - cache_local_deps: "yes"
+    - script:
+        inputs:
+        - content: |-
+            #!/bin/env bash
+            set -ex
+            if [[ $BITRISE_CACHE_INCLUDE_PATHS != *"$BITRISE_SOURCE_DIR/node_modules -> $BITRISE_SOURCE_DIR/package-lock.json"* ]]; then
+                echo "cache path not present"
+                exit 1
+            fi
     - cache-push: {}
 
 

@@ -62,7 +62,8 @@ func cacheYarn(workingDir string) error {
 			return err
 		}
 		if fileInfo.IsDir() && fileInfo.Name() == "node_modules" {
-			cachePaths = append(cachePaths, path)
+			lockFilePath := filepath.Join(filepath.Base(path), "package-lock.json")
+			cachePaths = append(cachePaths, path+" -> "+lockFilePath)
 			return filepath.SkipDir
 		}
 		return nil
