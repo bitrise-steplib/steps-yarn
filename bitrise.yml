@@ -17,16 +17,6 @@ workflows:
     - check
     - e2e
 
-  test-linux:
-    steps:
-    - script:
-        inputs:
-        - content: |-
-            #!/bin/env bash
-            set -ex
-            docker build --tag bitrise-steps-yarn-test .
-            docker run --rm bitrise-steps-yarn-test
-
   generate_readme:
     steps:
     - git::https://github.com/bitrise-steplib/steps-readme-generator.git@main: { }
