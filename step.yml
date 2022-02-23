@@ -2,7 +2,7 @@ title: Run yarn command
 summary: Runs `yarn` with the given command and args.
 description: |-
 
-  Yarn is a package manager that is compatible with the npm registry. Download your app's dependencies via yarn by using this Step.  
+  Yarn is a package manager that is compatible with the npm registry. Download your app's dependencies via yarn by using this Step.
 
   ### Configuring the Step
 
@@ -51,45 +51,45 @@ toolkit:
   go:
     package_name: github.com/bitrise-steplib/steps-yarn
 inputs:
-  - workdir: $BITRISE_SOURCE_DIR
-    opts:
-      title: Working directory
-      description: |
-        Working directory of the step.
-        You can leave it empty to not change it.
-  - command:
-    opts:
-      title: The `yarn` command to run
-      description: |
-        Specify the command to run with `yarn`. For example `add`.
-        Leave it blank to install dependencies.
-      is_required: false
-  - args:
-    opts:
-      title: Arguments for running `yarn` commands
-      description: |-
-        Arguments are added to the `yarn` command. You can specify multiple arguments, separated
-        by a space character. For example `react` or `-dev`
-  - cache_local_deps: "no"
-    opts:
-      title: Cache node_modules
-      description: |-
-        Select if the contents of node_modules directory should be cached.
+- workdir: $BITRISE_SOURCE_DIR
+  opts:
+    title: Working directory
+    description: |
+      Working directory of the step.
+      You can leave it empty to not change it.
+- command:
+  opts:
+    title: The `yarn` command to run
+    description: |
+      Specify the command to run with `yarn`. For example `add`.
+      Leave it blank to install dependencies.
+    is_required: false
+- args:
+  opts:
+    title: Arguments for running `yarn` commands
+    description: |-
+      Arguments are added to the `yarn` command. You can specify multiple arguments, separated
+      by a space character. For example `react` or `-dev`
+- cache_local_deps: "no"
+  opts:
+    title: Cache node_modules
+    description: |-
+      Select if the contents of node_modules directory should be cached.
 
-        `yes`: Mark local dependencies to be cached.
-        `no`: Do not use cache.
+      `yes`: Mark local dependencies to be cached.
+      `no`: Do not use cache.
 
-        All node_modules folders (recursively) located under the working directory will be cached.
-      is_required: true
-      value_options:
-      - "yes"
-      - "no"
-  - verbose_log: "no"
-    opts:
-      title: Enable verbose logging
-      description: |
-        Choose if debug logging is enabled.
-      is_required: true
-      value_options:
-      - "yes"
-      - "no"
+      All node_modules folders (recursively) located under the working directory will be cached.
+    is_required: true
+    value_options:
+    - "yes"
+    - "no"
+- verbose_log: "no"
+  opts:
+    title: Enable verbose logging
+    description: |
+      Choose if debug logging is enabled.
+    is_required: true
+    value_options:
+    - "yes"
+    - "no"

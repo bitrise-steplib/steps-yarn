@@ -1,4 +1,4 @@
-format_version: 9
+format_version: "11"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
 app:
@@ -8,19 +8,23 @@ app:
   - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
 
 workflows:
+  check:
+    steps:
+    - git::https://github.com/bitrise-steplib/steps-check.git: { }
+
+  e2e:
+    steps:
+    - git::https://github.com/bitrise-steplib/steps-check.git:
+        inputs:
+        - workflow: e2e
+
   ci:
     after_run:
     - test
     - yarn-workspaces
 
   test:
-    before_run:
-    - audit-this-step
     steps:
-    - go-list:
-    - golint:
-    - errcheck:
-    - go-test:
     - script:
         inputs:
         - content: |-
@@ -43,11 +47,11 @@ workflows:
             git clone $SAMPLE_APP_URL .
     - path::./:
         inputs:
-          - workdir: $BITRISE_SOURCE_DIR
-          - command: install
-          - args: -d -ll
-          - cache_local_deps: "no"
-  
+        - workdir: $BITRISE_SOURCE_DIR
+        - command: install
+        - args: -d -ll
+        - cache_local_deps: "no"
+
   yarn-workspaces:
     steps:
     - script:
@@ -66,12 +70,11 @@ workflows:
         title: Clone sample app
         inputs:
         - content: git clone $YARN_WORKSPACES_SAMPLE .
-    - cache-pull: {}
+    - cache-pull: { }
     - path::./:
         inputs:
-          - cache_local_deps: "yes"
-    - cache-push: {}
-
+        - cache_local_deps: "yes"
+    - cache-push: { }
 
   test-linux:
     steps:
@@ -83,12 +86,6 @@ workflows:
             docker build --tag bitrise-steps-yarn-test .
             docker run --rm bitrise-steps-yarn-test
 
-  audit-this-step:
+  generate_readme:
     steps:
-    - script:
-        inputs:
-        - content: |-
-            #!/bin/env bash
-            set -ex
-            stepman audit --step-yml ./step.yml
-
+    - git::https://github.com/bitrise-steplib/steps-readme-generator.git@main: { }
