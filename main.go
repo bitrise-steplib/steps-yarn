@@ -102,7 +102,7 @@ func main() {
 
 	args, err := shellquote.Split(config.YarnArgs)
 	if err != nil {
-		failf("Process config: invalid quoting of provided yarn arguments: %s", err)
+		failf("Process config: provided yarn arguments are not valid CLI arguments: %s", err)
 	}
 
 	if path, err := exec.LookPath("yarn"); err != nil {
