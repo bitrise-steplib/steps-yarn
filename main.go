@@ -67,7 +67,7 @@ func cacheYarn(workingDir string) error {
 		}
 		return nil
 	}); err != nil {
-		return fmt.Errorf("failed to find node_modules directories, error: %s", err)
+		return fmt.Errorf("failed to find node_modules directories: %s", err)
 	}
 
 	log.Debugf("Cached paths: %s", cachePaths)
@@ -76,7 +76,7 @@ func cacheYarn(workingDir string) error {
 	}
 
 	if err := yarnCache.Commit(); err != nil {
-		return fmt.Errorf("failed to mark node_modeules directories to be cached, error: %s", err)
+		return fmt.Errorf("failed to mark node_modules directories to be cached: %s", err)
 	}
 	return nil
 }
@@ -84,17 +84,32 @@ func cacheYarn(workingDir string) error {
 func main() {
 	var config config
 	if err := stepconf.Parse(&config); err != nil {
-		failf("Invalid input: %s", err)
+		failf("Process config: %s", err)
 	}
 	stepconf.Print(config)
 	fmt.Println()
 	log.SetEnableDebugLog(config.IsDebugLog)
 
+	absWorkingDir, err := filepath.Abs(config.WorkingDir)
+	if err != nil {
+		failf("Process config: failed to normalize working directory: %s", err)
+	}
+
+	commandParams, err := shellquote.Split(config.YarnCommand)
+	if err != nil {
+		failf("Process config: provided yarn command is not a valid CLI command: %s", err)
+	}
+
+	args, err := shellquote.Split(config.YarnArgs)
+	if err != nil {
+		failf("Process config: provided yarn arguments are not valid CLI arguments: %s", err)
+	}
+
 	if path, err := exec.LookPath("yarn"); err != nil {
 		log.Infof("Yarn not installed. Installing...")
 		installCmd, err := getInstallYarnCommand()
 		if err != nil {
-			failf("Failed to get yarn install command, error: %s", err)
+			failf("Install dependencies: unable to install yarn: %s", err)
 		}
 
 		fmt.Println()
@@ -103,17 +118,12 @@ func main() {
 
 		if err := installCmd.Run(); err != nil {
 			if errorutil.IsExitStatusError(err) {
-				failf("Yarn install command failed, error: %s", err)
+				failf("Install dependencies: installing yarn failed: %s", err)
 			}
-			failf("Failed to run command, error: %s", err)
+			failf("Install dependencies: failed to run command: %s", err)
 		}
 	} else {
 		log.Infof("Yarn is already installed at: %s", path)
-	}
-
-	absWorkingDir, err := filepath.Abs(config.WorkingDir)
-	if err != nil {
-		failf("Failed to get absolute working directory, error: %s", err)
 	}
 
 	log.Infof("Yarn version:")
@@ -125,19 +135,9 @@ func main() {
 	fmt.Println()
 	if err = versionCmd.Run(); err != nil {
 		if errorutil.IsExitStatusError(err) {
-			failf("Yarn version command failed, error: %s", err)
+			failf("Install dependencies: yarn version command failed: %s", err)
 		}
-		failf("Failed to run command, error: %s", err)
-	}
-
-	commandParams, err := shellquote.Split(config.YarnCommand)
-	if err != nil {
-		failf("Failed to split command arguments, error: %s", err)
-	}
-
-	args, err := shellquote.Split(config.YarnArgs)
-	if err != nil {
-		failf("Failed to split command arguments, error: %s", err)
+		failf("Install dependencies: failed to run yarn version command: %s", err)
 	}
 
 	yarnCmd := command.New("yarn", append(commandParams, args...)...)
@@ -157,14 +157,14 @@ func main() {
 	Please try to increase the timeout with --registry https://registry.npmjs.org --network-timeout [NUMBER] command before using this step (recommended value is 100000).
 	If issue still persists, please try to debug the error or reach out to support.`)
 			}
-			failf("Yarn command failed, error: %s", err)
+			failf("Run: provided yarn command failed: %s", err)
 		}
-		failf("Failed to run yarn command, error: %s", err)
+		failf("Run: failed to run provided yarn command: %s", err)
 	}
 
 	if config.UseCache && (len(commandParams) == 0 || commandParams[0] == "install") {
 		if err := cacheYarn(absWorkingDir); err != nil {
-			log.Warnf("Failed to cache node_modules, error: %s", err)
+			log.Warnf("Failed to cache node_modules: %s", err)
 		}
 	}
 }
