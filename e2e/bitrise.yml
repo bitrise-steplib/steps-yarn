@@ -1,0 +1,67 @@
+format_version: "11"
+default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
+
+app:
+  envs:
+  - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
+
+workflows:
+  test_simple:
+    envs:
+    - TEST_REPO_URL: https://github.com/bitrise-samples/react-native-expo.git
+    - TEST_REPO_BRANCH: master
+    - COMMAND: install
+    - ARGS: -d -ll
+    - IS_CACHE: "no"
+    after_run:
+    - _run
+
+  test_yarn_workspaces:
+    envs:
+    - TEST_REPO_URL: https://github.com/bitrise-io/sample-apps-yarn-workspaces.git
+    - TEST_REPO_BRANCH: master
+    - COMMAND:
+    - ARGS:
+    - IS_CACHE: "yes"
+    after_run:
+    - _run
+    - _check_cache_paths
+
+  _check_cache_paths:
+    steps:
+    - script:
+        title: Check if required files added to the cache env
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            WANT_PATHS="$BITRISE_SOURCE_DIR/_tmp/node_modules
+            $BITRISE_SOURCE_DIR/_tmp/packages/a/node_modules
+            $BITRISE_SOURCE_DIR/_tmp/packages/b/node_modules"
+
+            if [[ $BITRISE_CACHE_INCLUDE_PATHS != *"$WANT_PATHS"* ]]; then
+              echo "cache path not present"
+              exit 1
+            fi
+
+  _run:
+    steps:
+    - script:
+        title: Remove leftover _tmp folder
+        inputs:
+        - content: |
+            #!/bin/env bash
+            set -ex
+            rm -rf "$ORIG_BITRISE_SOURCE_DIR/_tmp"
+    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+        inputs:
+        - repository_url: $TEST_REPO_URL
+        - branch: $TEST_REPO_BRANCH
+        - clone_into_dir: $ORIG_BITRISE_SOURCE_DIR/_tmp
+    - path::./:
+        inputs:
+        - workdir: $ORIG_BITRISE_SOURCE_DIR/_tmp
+        - command: $COMMAND
+        - args: $ARGS
+        - cache_local_deps: $IS_CACHE
+        

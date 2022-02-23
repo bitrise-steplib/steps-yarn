@@ -1,12 +1,6 @@
 format_version: "11"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
-app:
-  envs:
-  - SAMPLE_APP_URL: https://github.com/bitrise-samples/react-native-expo.git
-  - YARN_WORKSPACES_SAMPLE: https://github.com/bitrise-io/sample-apps-yarn-workspaces.git
-  - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
-
 workflows:
   check:
     steps:
@@ -20,61 +14,8 @@ workflows:
 
   ci:
     after_run:
-    - test
-    - yarn-workspaces
-
-  test:
-    steps:
-    - script:
-        inputs:
-        - content: |-
-            #!/bin/env bash
-            set -ex
-            rm -rf "./_tmp"
-            mkdir "_tmp"
-    - change-workdir:
-        title: Switch working dir to test / _tmp dir
-        run_if: true
-        inputs:
-        - path: ${BITRISE_SOURCE_DIR}/_tmp
-        - is_create_path: true
-    - script:
-        title: Clone sample app
-        inputs:
-        - content: |-
-            #!/bin/env bash
-            set -ex
-            git clone $SAMPLE_APP_URL .
-    - path::./:
-        inputs:
-        - workdir: $BITRISE_SOURCE_DIR
-        - command: install
-        - args: -d -ll
-        - cache_local_deps: "no"
-
-  yarn-workspaces:
-    steps:
-    - script:
-        inputs:
-        - content: |-
-            #!/bin/env bash
-            set -ex
-            rm -rf "./_tmp"
-            mkdir "_tmp"
-    - change-workdir:
-        title: Switch working dir to test / _tmp dir
-        inputs:
-        - path: ${BITRISE_SOURCE_DIR}/_tmp
-        - is_create_path: true
-    - script:
-        title: Clone sample app
-        inputs:
-        - content: git clone $YARN_WORKSPACES_SAMPLE .
-    - cache-pull: { }
-    - path::./:
-        inputs:
-        - cache_local_deps: "yes"
-    - cache-push: { }
+    - check
+    - e2e
 
   test-linux:
     steps:
