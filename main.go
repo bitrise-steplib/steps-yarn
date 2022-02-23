@@ -97,7 +97,7 @@ func main() {
 
 	commandParams, err := shellquote.Split(config.YarnCommand)
 	if err != nil {
-		failf("Process config: invalid quoting of provided yarn command: %s", err)
+		failf("Process config: provided yarn command is not a valid CLI command: %s", err)
 	}
 
 	args, err := shellquote.Split(config.YarnArgs)
