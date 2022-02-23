@@ -1,6 +1,8 @@
 ## Bitrise
 
 .bitrise*
+.DS_Store
+steps-yarn
 
 ## Node
 
