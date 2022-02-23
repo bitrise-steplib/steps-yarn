@@ -92,7 +92,7 @@ func main() {
 
 	absWorkingDir, err := filepath.Abs(config.WorkingDir)
 	if err != nil {
-		failf("Process config: faield to normalize working directory: %s", err)
+		failf("Process config: failed to normalize working directory: %s", err)
 	}
 
 	commandParams, err := shellquote.Split(config.YarnCommand)
