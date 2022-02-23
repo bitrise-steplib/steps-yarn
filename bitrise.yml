@@ -12,11 +12,6 @@ workflows:
         inputs:
         - workflow: e2e
 
-  ci:
-    after_run:
-    - check
-    - e2e
-
   generate_readme:
     steps:
     - git::https://github.com/bitrise-steplib/steps-readme-generator.git@main: { }
