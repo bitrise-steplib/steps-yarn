@@ -11,7 +11,7 @@ workflows:
     - TEST_REPO_URL: https://github.com/bitrise-samples/react-native-expo.git
     - TEST_REPO_BRANCH: master
     - COMMAND: install
-    - ARGS: -d -ll
+    - ARGS: -d -ll --registry https://registry.npmjs.org --network-timeout 100000 --network-concurrency 10
     - IS_CACHE: "no"
     after_run:
     - _run
@@ -21,7 +21,7 @@ workflows:
     - TEST_REPO_URL: https://github.com/bitrise-io/sample-apps-yarn-workspaces.git
     - TEST_REPO_BRANCH: master
     - COMMAND:
-    - ARGS:
+    - ARGS: --registry https://registry.npmjs.org --network-timeout 100000 --network-concurrency 10
     - IS_CACHE: "yes"
     after_run:
     - _run
