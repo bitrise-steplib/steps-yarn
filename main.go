@@ -6,9 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/bitrise-io/go-steputils/cache"
@@ -27,28 +25,76 @@ type config struct {
 	IsDebugLog  bool   `env:"verbose_log,opt[yes,no]"`
 }
 
+func main() {
+	var config config
+	if err := stepconf.Parse(&config); err != nil {
+		failf("Process config: %s", err)
+	}
+	stepconf.Print(config)
+	fmt.Println()
+	log.SetEnableDebugLog(config.IsDebugLog)
+
+	absWorkingDir, err := filepath.Abs(config.WorkingDir)
+	if err != nil {
+		failf("Process config: failed to normalize working directory: %s", err)
+	}
+
+	commandParams, err := shellquote.Split(config.YarnCommand)
+	if err != nil {
+		failf("Process config: provided yarn command is not a valid CLI command: %s", err)
+	}
+
+	args, err := shellquote.Split(config.YarnArgs)
+	if err != nil {
+		failf("Process config: provided yarn arguments are not valid CLI arguments: %s", err)
+	}
+
+	validInstallation := validateYarnInstallation(absWorkingDir)
+	if !validInstallation {
+		if err := installYarn(); err != nil {
+			failf("Install dependencies: %s", err)
+		}
+		if err := printYarnVersion(absWorkingDir); err != nil {
+			failf("Install dependencies: %s", err)
+		}
+	}
+
+	yarnCmd := command.New("yarn", append(commandParams, args...)...)
+	var output bytes.Buffer
+	yarnCmd.SetDir(absWorkingDir)
+	yarnCmd.SetStdout(io.MultiWriter(os.Stdout, &output)).SetStderr(io.MultiWriter(os.Stderr, &output))
+
+	fmt.Println()
+	log.Donef("$ %s", yarnCmd.PrintableCommandArgs())
+	fmt.Println()
+
+	if err := yarnCmd.Run(); err != nil {
+		if errorutil.IsExitStatusError(err) {
+			if strings.Contains(output.String(), "There appears to be trouble with your network connection. Retrying...") {
+				fmt.Println()
+				log.Warnf(`Looks like you've got network issues while installing yarn.
+	Please try to increase the timeout with --registry https://registry.npmjs.org --network-timeout [NUMBER] command before using this step (recommended value is 100000).
+	If issue still persists, please try to debug the error or reach out to support.`)
+			}
+			failf("Run: provided yarn command failed: %s", err)
+		}
+		failf("Run: failed to run provided yarn command: %s", err)
+	}
+
+	if config.UseCache && (len(commandParams) == 0 || commandParams[0] == "install") {
+		if err := cacheYarn(absWorkingDir); err != nil {
+			log.Warnf("Failed to cache node_modules: %s", err)
+		}
+	}
+}
+
 func failf(format string, v ...interface{}) {
 	log.Errorf(format, v...)
 	os.Exit(1)
 }
 
-func getInstallYarnCommand() (*command.Model, error) {
-	if runtime.GOOS != "linux" {
-		return nil, fmt.Errorf("unsupported platform %s", runtime.GOOS)
-	}
-	if _, err := os.Stat(path.Join("etc", "lsb-release")); err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("only Ubuntu distribution supported")
-		}
-		return nil, err
-	}
-
-	installCmd := command.New("sh", "-c", `curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-sudo apt-get update && sudo apt-get install -y yarn`)
-	installCmd.SetStdout(os.Stdout).SetStderr(os.Stderr)
-
-	return installCmd, nil
+func getInstallYarnCommand() *command.Model {
+	return command.New("npm", "install", "--global", "yarn")
 }
 
 func cacheYarn(workingDir string) error {
@@ -81,90 +127,60 @@ func cacheYarn(workingDir string) error {
 	return nil
 }
 
-func main() {
-	var config config
-	if err := stepconf.Parse(&config); err != nil {
-		failf("Process config: %s", err)
+func validateYarnInstallation(workDir string) bool {
+	pth, err := exec.LookPath("yarn")
+	if err != nil {
+		log.Debugf("yarn is not installed to the PATH")
+		return false
 	}
-	stepconf.Print(config)
+
+	versionCmd := command.New("yarn", "--version").SetDir(workDir)
+	out, err := versionCmd.RunAndReturnTrimmedCombinedOutput()
+	if err != nil {
+		log.Debugf("yarn version command failed: %s, out: %s", err, out)
+		return false
+	}
+
+	log.Infof("Yarn is already installed at: %s", pth)
 	fmt.Println()
-	log.SetEnableDebugLog(config.IsDebugLog)
+	log.Infof("Yarn version:")
+	log.Printf(out)
 
-	absWorkingDir, err := filepath.Abs(config.WorkingDir)
-	if err != nil {
-		failf("Process config: failed to normalize working directory: %s", err)
-	}
+	return true
+}
 
-	commandParams, err := shellquote.Split(config.YarnCommand)
-	if err != nil {
-		failf("Process config: provided yarn command is not a valid CLI command: %s", err)
-	}
+func installYarn() error {
+	log.Infof("Yarn not installed. Installing...")
+	installCmd := getInstallYarnCommand()
 
-	args, err := shellquote.Split(config.YarnArgs)
-	if err != nil {
-		failf("Process config: provided yarn arguments are not valid CLI arguments: %s", err)
-	}
+	fmt.Println()
+	log.Donef("$ %s", installCmd.PrintableCommandArgs())
+	fmt.Println()
 
-	if path, err := exec.LookPath("yarn"); err != nil {
-		log.Infof("Yarn not installed. Installing...")
-		installCmd, err := getInstallYarnCommand()
-		if err != nil {
-			failf("Install dependencies: unable to install yarn: %s", err)
+	if err := installCmd.Run(); err != nil {
+		if errorutil.IsExitStatusError(err) {
+			return fmt.Errorf("installing yarn failed: %s", err)
 		}
-
-		fmt.Println()
-		log.Donef("$ %s", installCmd.PrintableCommandArgs())
-		fmt.Println()
-
-		if err := installCmd.Run(); err != nil {
-			if errorutil.IsExitStatusError(err) {
-				failf("Install dependencies: installing yarn failed: %s", err)
-			}
-			failf("Install dependencies: failed to run command: %s", err)
-		}
-	} else {
-		log.Infof("Yarn is already installed at: %s", path)
+		return fmt.Errorf("failed to run command: %s", err)
 	}
 
+	return nil
+}
+
+func printYarnVersion(workDir string) error {
 	log.Infof("Yarn version:")
 	versionCmd := command.New("yarn", "--version")
-	versionCmd.SetStdout(os.Stdout).SetStderr(os.Stderr).SetDir(absWorkingDir)
+	versionCmd.SetStdout(os.Stdout).SetStderr(os.Stderr).SetDir(workDir)
 
 	fmt.Println()
 	log.Donef("$ %s", versionCmd.PrintableCommandArgs())
 	fmt.Println()
-	if err = versionCmd.Run(); err != nil {
+	if err := versionCmd.Run(); err != nil {
 		if errorutil.IsExitStatusError(err) {
-			failf("Install dependencies: yarn version command failed: %s", err)
+			return fmt.Errorf("yarn version command failed: %s", err)
 		}
-		failf("Install dependencies: failed to run yarn version command: %s", err)
+		return fmt.Errorf("failed to run command: %s", err)
 	}
 
-	yarnCmd := command.New("yarn", append(commandParams, args...)...)
-	var output bytes.Buffer
-	yarnCmd.SetDir(absWorkingDir)
-	yarnCmd.SetStdout(io.MultiWriter(os.Stdout, &output)).SetStderr(io.MultiWriter(os.Stderr, &output))
-
-	fmt.Println()
-	log.Donef("$ %s", yarnCmd.PrintableCommandArgs())
-	fmt.Println()
-
-	if err := yarnCmd.Run(); err != nil {
-		if errorutil.IsExitStatusError(err) {
-			if strings.Contains(output.String(), "There appears to be trouble with your network connection. Retrying...") {
-				fmt.Println()
-				log.Warnf(`Looks like you've got network issues while installing yarn.
-	Please try to increase the timeout with --registry https://registry.npmjs.org --network-timeout [NUMBER] command before using this step (recommended value is 100000).
-	If issue still persists, please try to debug the error or reach out to support.`)
-			}
-			failf("Run: provided yarn command failed: %s", err)
-		}
-		failf("Run: failed to run provided yarn command: %s", err)
-	}
-
-	if config.UseCache && (len(commandParams) == 0 || commandParams[0] == "install") {
-		if err := cacheYarn(absWorkingDir); err != nil {
-			log.Warnf("Failed to cache node_modules: %s", err)
-		}
-	}
+	return nil
 }
