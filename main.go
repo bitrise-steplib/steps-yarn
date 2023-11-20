@@ -25,45 +25,6 @@ type config struct {
 	IsDebugLog  bool   `env:"verbose_log,opt[yes,no]"`
 }
 
-func failf(format string, v ...interface{}) {
-	log.Errorf(format, v...)
-	os.Exit(1)
-}
-
-func getInstallYarnCommand() *command.Model {
-	return command.New("npm", "install", "--global", "yarn")
-}
-
-func cacheYarn(workingDir string) error {
-	yarnCache := cache.New()
-	var cachePaths []string
-
-	// Supporting yarn workspaces (https://yarnpkg.com/lang/en/docs/workspaces/), for this recursively look
-	// up all node_modules directories
-	if err := filepath.Walk(workingDir, func(path string, fileInfo os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if fileInfo.IsDir() && fileInfo.Name() == "node_modules" {
-			cachePaths = append(cachePaths, path)
-			return filepath.SkipDir
-		}
-		return nil
-	}); err != nil {
-		return fmt.Errorf("failed to find node_modules directories: %s", err)
-	}
-
-	log.Debugf("Cached paths: %s", cachePaths)
-	for _, path := range cachePaths {
-		yarnCache.IncludePath(path)
-	}
-
-	if err := yarnCache.Commit(); err != nil {
-		return fmt.Errorf("failed to mark node_modules directories to be cached: %s", err)
-	}
-	return nil
-}
-
 func main() {
 	var config config
 	if err := stepconf.Parse(&config); err != nil {
@@ -127,15 +88,56 @@ func main() {
 	}
 }
 
+func failf(format string, v ...interface{}) {
+	log.Errorf(format, v...)
+	os.Exit(1)
+}
+
+func getInstallYarnCommand() *command.Model {
+	return command.New("npm", "install", "--global", "yarn")
+}
+
+func cacheYarn(workingDir string) error {
+	yarnCache := cache.New()
+	var cachePaths []string
+
+	// Supporting yarn workspaces (https://yarnpkg.com/lang/en/docs/workspaces/), for this recursively look
+	// up all node_modules directories
+	if err := filepath.Walk(workingDir, func(path string, fileInfo os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if fileInfo.IsDir() && fileInfo.Name() == "node_modules" {
+			cachePaths = append(cachePaths, path)
+			return filepath.SkipDir
+		}
+		return nil
+	}); err != nil {
+		return fmt.Errorf("failed to find node_modules directories: %s", err)
+	}
+
+	log.Debugf("Cached paths: %s", cachePaths)
+	for _, path := range cachePaths {
+		yarnCache.IncludePath(path)
+	}
+
+	if err := yarnCache.Commit(); err != nil {
+		return fmt.Errorf("failed to mark node_modules directories to be cached: %s", err)
+	}
+	return nil
+}
+
 func validateYarnInstallation(workDir string) bool {
 	pth, err := exec.LookPath("yarn")
 	if err != nil {
+		log.Debugf("yarn is not installed to the PATH")
 		return false
 	}
 
 	versionCmd := command.New("yarn", "--version").SetDir(workDir)
 	out, err := versionCmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
+		log.Debugf("yarn version command failed: %s, out: %s", err, out)
 		return false
 	}
 
