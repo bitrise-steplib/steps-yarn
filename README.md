@@ -58,6 +58,7 @@ You can also run this step directly with [Bitrise CLI](https://github.com/bitris
 | `command` | Specify the command to run with `yarn`. For example `add`. Leave it blank to install dependencies.  |  |  |
 | `args` | Arguments are added to the `yarn` command. You can specify multiple arguments, separated by a space character. For example `react` or `-dev` |  |  |
 | `cache_local_deps` | Select if the contents of node_modules directory should be cached.  `yes`: Mark local dependencies to be cached. `no`: Do not use cache.  All node_modules folders (recursively) located under the working directory will be cached. | required | `no` |
+| `corepack` | Select if corepack should be enabled.  `yes`: Runs `corepack enable`. `no`: Do nothing. | required | `no` |
 | `verbose_log` | Choose if debug logging is enabled.  | required | `no` |
 </details>
 

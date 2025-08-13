@@ -22,6 +22,7 @@ type config struct {
 	YarnCommand string `env:"command"`
 	YarnArgs    string `env:"args"`
 	UseCache    bool   `env:"cache_local_deps,opt[yes,no]"`
+	UseCorepack bool   `env:"corepack,opt[yes,no]"`
 	IsDebugLog  bool   `env:"verbose_log,opt[yes,no]"`
 }
 
@@ -57,6 +58,16 @@ func main() {
 		if err := printYarnVersion(absWorkingDir); err != nil {
 			failf("Install dependencies: %s", err)
 		}
+	}
+
+	if (config.UseCorepack) {
+		log.Infof("Enabling corepack...")
+		corepackCmd := command.New("corepack", "enable")
+		out, err := corepackCmd.RunAndReturnTrimmedCombinedOutput()
+		if err != nil {
+			failf("Corepack enable failed: %s, out: %s", err, out)
+		}
+		log.Infof("Enabled corepack.")
 	}
 
 	yarnCmd := command.New("yarn", append(commandParams, args...)...)

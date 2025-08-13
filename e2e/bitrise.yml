@@ -13,6 +13,7 @@ workflows:
     - COMMAND: install
     - ARGS: -d -ll
     - IS_CACHE: "no"
+    - USE_COREPACK: "no"
     after_run:
     - _run
 
@@ -23,9 +24,22 @@ workflows:
     - COMMAND:
     - ARGS:
     - IS_CACHE: "yes"
+    - USE_COREPACK: "no"
     after_run:
     - _run
     - _check_cache_paths
+
+  # test_yarn_berry:
+  #   envs:
+  #   - TEST_REPO_URL: https://github.com/bitrise-io/sample-apps-yarn-berry.git
+  #   - TEST_REPO_BRANCH: main
+  #   - COMMAND:
+  #   - ARGS:
+  #   - IS_CACHE: "yes"
+  #   - USE_COREPACK: "yes"
+  #   after_run:
+  #   - _run
+  #   - _check_cache_paths
 
   _check_cache_paths:
     steps:
@@ -64,3 +78,4 @@ workflows:
         - command: $COMMAND
         - args: $ARGS
         - cache_local_deps: $IS_CACHE
+        - corepack: $USE_COREPACK

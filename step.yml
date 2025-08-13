@@ -84,6 +84,18 @@ inputs:
     value_options:
     - "yes"
     - "no"
+- corepack: "no"
+  opts:
+    title: Enable corepack
+    description: |-
+      Select if corepack should be enabled.
+
+      `yes`: Runs `corepack enable`.
+      `no`: Do nothing.
+    is_required: true
+    value_options:
+    - "yes"
+    - "no"
 - verbose_log: "no"
   opts:
     title: Enable verbose logging
