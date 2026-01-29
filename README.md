@@ -22,8 +22,6 @@ To use the Step, you need to configure your dependencies in your `package.json` 
 
    You can specify multiple arguments. Check out the available arguments for each command in yarn's documentation.
 
-You can also cache the contents of the node_modules directory by setting the **Cache node_modules** input to `yes`.
-
 ### Troubleshooting
 
 If the Step fails, run it again with verbose logging enabled. To do so, set the **Enable verbose logging** input to `yes`. Doing so allows yarn to output more information about the command you ran.
@@ -43,7 +41,7 @@ Make sure your commands and arguments are correct, and that your packages are co
 
 ## 🧩 Get started
 
-Add this step directly to your workflow in the [Bitrise Workflow Editor](https://devcenter.bitrise.io/steps-and-workflows/steps-and-workflows-index/).
+Add this step directly to your workflow in the [Bitrise Workflow Editor](https://docs.bitrise.io/en/bitrise-ci/workflows-and-pipelines/steps/adding-steps-to-a-workflow.html).
 
 You can also run this step directly with [Bitrise CLI](https://github.com/bitrise-io/bitrise).
 
@@ -57,7 +55,6 @@ You can also run this step directly with [Bitrise CLI](https://github.com/bitris
 | `workdir` | Working directory of the step. You can leave it empty to not change it.  |  | `$BITRISE_SOURCE_DIR` |
 | `command` | Specify the command to run with `yarn`. For example `add`. Leave it blank to install dependencies.  |  |  |
 | `args` | Arguments are added to the `yarn` command. You can specify multiple arguments, separated by a space character. For example `react` or `-dev` |  |  |
-| `cache_local_deps` | Select if the contents of node_modules directory should be cached.  `yes`: Mark local dependencies to be cached. `no`: Do not use cache.  All node_modules folders (recursively) located under the working directory will be cached. | required | `no` |
 | `verbose_log` | Choose if debug logging is enabled.  | required | `no` |
 </details>
 
@@ -70,9 +67,8 @@ There are no outputs defined in this step
 
 We welcome [pull requests](https://github.com/bitrise-community/steps-yarn/pulls) and [issues](https://github.com/bitrise-community/steps-yarn/issues) against this repository.
 
-For pull requests, work on your changes in a forked repository and use the Bitrise CLI to [run step tests locally](https://devcenter.bitrise.io/bitrise-cli/run-your-first-build/).
+For pull requests, work on your changes in a forked repository and use the Bitrise CLI to [run step tests locally](https://docs.bitrise.io/en/bitrise-ci/bitrise-cli/running-your-first-local-build-with-the-cli.html).
 
 Learn more about developing steps:
 
-- [Create your own step](https://devcenter.bitrise.io/contributors/create-your-own-step/)
-- [Testing your Step](https://devcenter.bitrise.io/contributors/testing-and-versioning-your-steps/)
+- [Create your own step](https://docs.bitrise.io/en/bitrise-ci/workflows-and-pipelines/developing-your-own-bitrise-step/developing-a-new-step.html)
