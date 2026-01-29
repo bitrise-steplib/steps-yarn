@@ -16,8 +16,6 @@ description: |-
 
      You can specify multiple arguments. Check out the available arguments for each command in yarn's documentation.
 
-  You can also cache the contents of the node_modules directory by setting the **Cache node_modules** input to `yes`.
-
   ### Troubleshooting
 
   If the Step fails, run it again with verbose logging enabled. To do so, set the **Enable verbose logging** input to `yes`. Doing so allows yarn to output more information about the command you ran.
@@ -70,20 +68,6 @@ inputs:
     description: |-
       Arguments are added to the `yarn` command. You can specify multiple arguments, separated
       by a space character. For example `react` or `-dev`
-- cache_local_deps: "no"
-  opts:
-    title: Cache node_modules
-    description: |-
-      Select if the contents of node_modules directory should be cached.
-
-      `yes`: Mark local dependencies to be cached.
-      `no`: Do not use cache.
-
-      All node_modules folders (recursively) located under the working directory will be cached.
-    is_required: true
-    value_options:
-    - "yes"
-    - "no"
 - verbose_log: "no"
   opts:
     title: Enable verbose logging

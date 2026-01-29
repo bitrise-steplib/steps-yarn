@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -9,11 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/bitrise-io/go-steputils/cache"
-	"github.com/bitrise-io/go-steputils/stepconf"
-	"github.com/bitrise-io/go-utils/command"
-	"github.com/bitrise-io/go-utils/errorutil"
-	"github.com/bitrise-io/go-utils/log"
+	"github.com/bitrise-io/go-steputils/v2/stepconf"
+	"github.com/bitrise-io/go-utils/v2/command"
+	"github.com/bitrise-io/go-utils/v2/env"
+	"github.com/bitrise-io/go-utils/v2/log"
 	"github.com/kballard/go-shellquote"
 )
 
@@ -21,18 +21,29 @@ type config struct {
 	WorkingDir  string `env:"workdir,dir"`
 	YarnCommand string `env:"command"`
 	YarnArgs    string `env:"args"`
-	UseCache    bool   `env:"cache_local_deps,opt[yes,no]"`
 	IsDebugLog  bool   `env:"verbose_log,opt[yes,no]"`
 }
 
+var (
+	logger     log.Logger
+	cmdFactory command.Factory
+)
+
 func main() {
 	var config config
-	if err := stepconf.Parse(&config); err != nil {
+	envRepo := env.NewRepository()
+	parser := stepconf.NewInputParser(envRepo)
+	if err := parser.Parse(&config); err != nil {
 		failf("Process config: %s", err)
 	}
 	stepconf.Print(config)
+
+	logger = log.NewLogger()
+	if config.IsDebugLog {
+		logger.EnableDebugLog(true)
+	}
+	cmdFactory = command.NewFactory(envRepo)
 	fmt.Println()
-	log.SetEnableDebugLog(config.IsDebugLog)
 
 	absWorkingDir, err := filepath.Abs(config.WorkingDir)
 	if err != nil {
@@ -59,20 +70,23 @@ func main() {
 		}
 	}
 
-	yarnCmd := command.New("yarn", append(commandParams, args...)...)
 	var output bytes.Buffer
-	yarnCmd.SetDir(absWorkingDir)
-	yarnCmd.SetStdout(io.MultiWriter(os.Stdout, &output)).SetStderr(io.MultiWriter(os.Stderr, &output))
+	yarnCmd := cmdFactory.Create("yarn", append(commandParams, args...), &command.Opts{
+		Dir:    absWorkingDir,
+		Stdout: io.MultiWriter(os.Stdout, &output),
+		Stderr: io.MultiWriter(os.Stderr, &output),
+	})
 
 	fmt.Println()
-	log.Donef("$ %s", yarnCmd.PrintableCommandArgs())
+	logger.Donef("$ %s", yarnCmd.PrintableCommandArgs())
 	fmt.Println()
 
 	if err := yarnCmd.Run(); err != nil {
-		if errorutil.IsExitStatusError(err) {
+		var exitErr *command.ExitStatusError
+		if errors.As(err, &exitErr) {
 			if strings.Contains(output.String(), "There appears to be trouble with your network connection. Retrying...") {
 				fmt.Println()
-				log.Warnf(`Looks like you've got network issues while installing yarn.
+				logger.Warnf(`Looks like you've got network issues while installing yarn.
 	Please try to increase the timeout with --registry https://registry.npmjs.org --network-timeout [NUMBER] command before using this step (recommended value is 100000).
 	If issue still persists, please try to debug the error or reach out to support.`)
 			}
@@ -80,85 +94,53 @@ func main() {
 		}
 		failf("Run: failed to run provided yarn command: %s", err)
 	}
-
-	if config.UseCache && (len(commandParams) == 0 || commandParams[0] == "install") {
-		if err := cacheYarn(absWorkingDir); err != nil {
-			log.Warnf("Failed to cache node_modules: %s", err)
-		}
-	}
 }
 
 func failf(format string, v ...interface{}) {
-	log.Errorf(format, v...)
+	logger.Errorf(format, v...)
 	os.Exit(1)
 }
 
-func getInstallYarnCommand() *command.Model {
-	return command.New("npm", "install", "--global", "yarn")
+func getInstallYarnCommand() command.Command {
+	return cmdFactory.Create("npm", []string{"install", "--global", "yarn"}, nil)
 }
 
-func cacheYarn(workingDir string) error {
-	yarnCache := cache.New()
-	var cachePaths []string
-
-	// Supporting yarn workspaces (https://yarnpkg.com/lang/en/docs/workspaces/), for this recursively look
-	// up all node_modules directories
-	if err := filepath.Walk(workingDir, func(path string, fileInfo os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if fileInfo.IsDir() && fileInfo.Name() == "node_modules" {
-			cachePaths = append(cachePaths, path)
-			return filepath.SkipDir
-		}
-		return nil
-	}); err != nil {
-		return fmt.Errorf("failed to find node_modules directories: %s", err)
-	}
-
-	log.Debugf("Cached paths: %s", cachePaths)
-	for _, path := range cachePaths {
-		yarnCache.IncludePath(path)
-	}
-
-	if err := yarnCache.Commit(); err != nil {
-		return fmt.Errorf("failed to mark node_modules directories to be cached: %s", err)
-	}
-	return nil
-}
 
 func validateYarnInstallation(workDir string) bool {
 	pth, err := exec.LookPath("yarn")
 	if err != nil {
-		log.Debugf("yarn is not installed to the PATH")
+		logger.Debugf("yarn is not installed to the PATH")
 		return false
 	}
 
-	versionCmd := command.New("yarn", "--version").SetDir(workDir)
+	versionCmd := cmdFactory.Create("yarn", []string{"--version"}, &command.Opts{
+		Dir: workDir,
+	})
 	out, err := versionCmd.RunAndReturnTrimmedCombinedOutput()
 	if err != nil {
-		log.Debugf("yarn version command failed: %s, out: %s", err, out)
+		logger.Debugf("yarn version command failed: %s, out: %s", err, out)
 		return false
 	}
 
-	log.Infof("Yarn is already installed at: %s", pth)
+	logger.Infof("Yarn is already installed at: %s", pth)
 	fmt.Println()
-	log.Infof("Yarn version:")
-	log.Printf(out)
+	logger.Infof("Yarn version:")
+	logger.Printf(out)
 
 	return true
 }
 
 func installYarn() error {
-	log.Infof("Yarn not installed. Installing...")
+	logger.Infof("Yarn not installed. Installing...")
 	installCmd := getInstallYarnCommand()
 
 	fmt.Println()
-	log.Donef("$ %s", installCmd.PrintableCommandArgs())
+	logger.Donef("$ %s", installCmd.PrintableCommandArgs())
 	fmt.Println()
 
 	if err := installCmd.Run(); err != nil {
-		if errorutil.IsExitStatusError(err) {
+		var exitErr *command.ExitStatusError
+		if errors.As(err, &exitErr) {
 			return fmt.Errorf("installing yarn failed: %s", err)
 		}
 		return fmt.Errorf("failed to run command: %s", err)
@@ -168,15 +150,19 @@ func installYarn() error {
 }
 
 func printYarnVersion(workDir string) error {
-	log.Infof("Yarn version:")
-	versionCmd := command.New("yarn", "--version")
-	versionCmd.SetStdout(os.Stdout).SetStderr(os.Stderr).SetDir(workDir)
+	logger.Infof("Yarn version:")
+	versionCmd := cmdFactory.Create("yarn", []string{"--version"}, &command.Opts{
+		Dir:    workDir,
+		Stdout: os.Stdout,
+		Stderr: os.Stderr,
+	})
 
 	fmt.Println()
-	log.Donef("$ %s", versionCmd.PrintableCommandArgs())
+	logger.Donef("$ %s", versionCmd.PrintableCommandArgs())
 	fmt.Println()
 	if err := versionCmd.Run(); err != nil {
-		if errorutil.IsExitStatusError(err) {
+		var exitErr *command.ExitStatusError
+		if errors.As(err, &exitErr) {
 			return fmt.Errorf("yarn version command failed: %s", err)
 		}
 		return fmt.Errorf("failed to run command: %s", err)
