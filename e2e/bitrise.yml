@@ -12,7 +12,6 @@ workflows:
     - TEST_REPO_BRANCH: master
     - COMMAND: install
     - ARGS: -d -ll
-    - IS_CACHE: "no"
     after_run:
     - _run
 
@@ -22,27 +21,8 @@ workflows:
     - TEST_REPO_BRANCH: master
     - COMMAND:
     - ARGS:
-    - IS_CACHE: "yes"
     after_run:
     - _run
-    - _check_cache_paths
-
-  _check_cache_paths:
-    steps:
-    - script:
-        title: Check if required files added to the cache env
-        inputs:
-        - content: |
-            #!/bin/bash
-            set -ex
-            WANT_PATHS="$BITRISE_SOURCE_DIR/_tmp/node_modules
-            $BITRISE_SOURCE_DIR/_tmp/packages/a/node_modules
-            $BITRISE_SOURCE_DIR/_tmp/packages/b/node_modules"
-
-            if [[ $BITRISE_CACHE_INCLUDE_PATHS != *"$WANT_PATHS"* ]]; then
-              echo "cache path not present"
-              exit 1
-            fi
 
   _run:
     steps:
@@ -63,4 +43,3 @@ workflows:
         - workdir: $ORIG_BITRISE_SOURCE_DIR/_tmp
         - command: $COMMAND
         - args: $ARGS
-        - cache_local_deps: $IS_CACHE

@@ -1,11 +1,12 @@
 package colorstring
 
+// ANSI color escape sequences
+
 import (
 	"fmt"
 )
 
 // Color ...
-// ANSI color escape sequences
 type Color string
 
 const (
