@@ -4,7 +4,7 @@ description: |-
 
   Yarn is a package manager that is compatible with the npm registry. Download your app's dependencies via yarn by using this Step.
 
-  This Step uses Corepack (included with Node.js) to automatically manage the Yarn version. The Yarn version is determined by the `packageManager` field in your `package.json` file or the `.yarnrc`/`.yarnrc.yml` configuration file.
+  This Step uses Corepack to automatically manage the Yarn version. The Yarn version is determined by the `packageManager` field in your `package.json` file or the `.yarnrc`/`.yarnrc.yml` configuration file.
 
   ### Configuring the Step
 

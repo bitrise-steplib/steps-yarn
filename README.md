@@ -10,15 +10,25 @@ Runs `yarn` with the given command and args.
 
 Yarn is a package manager that is compatible with the npm registry. Download your app's dependencies via yarn by using this Step.
 
+This Step uses Corepack to automatically manage the Yarn version. The Yarn version is determined by the `packageManager` field in your `package.json` file or the `.yarnrc`/`.yarnrc.yml` configuration file.
+
 ### Configuring the Step
 
 To use the Step, you need to configure your dependencies in your `package.json` file.
 
-1. Set a command in **The yarn command to run** input.
+1. (Optional) Specify the Yarn version in your `package.json`:
+   ```json
+   {
+     "packageManager": "yarn@4.1.0"
+   }
+   ```
+   If not specified, Corepack will use its default Yarn version.
+
+2. Set a command in **The yarn command to run** input.
 
    If you leave the input blank, the Step will simply install your dependencies. You can find the other available command in [yarn's documentation](https://yarnpkg.com/lang/en/docs/cli/).
 
-1. Set the arguments in the **Arguments for running yarn commands** input.
+3. Set the arguments in the **Arguments for running yarn commands** input.
 
    You can specify multiple arguments. Check out the available arguments for each command in yarn's documentation.
 
@@ -28,8 +38,11 @@ If the Step fails, run it again with verbose logging enabled. To do so, set the 
 
 Make sure your commands and arguments are correct, and that your packages are correctly defined in the `package.json` file.
 
+Note: This Step requires Corepack to manage Yarn versions. Corepack is bundled with Node.js from 14.19.0 and 16.9.0 until 24.x. For Node.js 25+, Corepack will be automatically installed via npm if not already present.
+
 ### Useful links
 
+[Corepack documentation](https://github.com/nodejs/corepack#readme)
 [Getting started with React Native apps](https://devcenter.bitrise.io/getting-started/getting-started-with-react-native-apps/)
 [Running Detox tests on Bitrise](https://devcenter.bitrise.io/testing/running-detox-tests-on-bitrise/)
 
