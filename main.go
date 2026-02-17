@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -60,14 +61,8 @@ func main() {
 		failf("Process config: provided yarn arguments are not valid CLI arguments: %s", err)
 	}
 
-	validInstallation := validateYarnInstallation(absWorkingDir)
-	if !validInstallation {
-		if err := installYarn(); err != nil {
-			failf("Install dependencies: %s", err)
-		}
-		if err := printYarnVersion(absWorkingDir); err != nil {
-			failf("Install dependencies: %s", err)
-		}
+	if err := validateAndPrintYarnInfo(absWorkingDir); err != nil {
+		failf("Validate Yarn: %s", err)
 	}
 
 	var output bytes.Buffer
@@ -101,55 +96,23 @@ func failf(format string, v ...interface{}) {
 	os.Exit(1)
 }
 
-func getInstallYarnCommand() command.Command {
-	return cmdFactory.Create("npm", []string{"install", "--global", "yarn"}, nil)
-}
+func validateAndPrintYarnInfo(workDir string) error {
+	if err := ensureCorepack(workDir); err != nil {
+		return err
+	}
 
-
-func validateYarnInstallation(workDir string) bool {
 	pth, err := exec.LookPath("yarn")
 	if err != nil {
-		logger.Debugf("yarn is not installed to the PATH")
-		return false
+		return fmt.Errorf("yarn is unexpectedly not installed to the PATH after Corepack setup: %s", err)
 	}
 
-	versionCmd := cmdFactory.Create("yarn", []string{"--version"}, &command.Opts{
-		Dir: workDir,
-	})
-	out, err := versionCmd.RunAndReturnTrimmedCombinedOutput()
-	if err != nil {
-		logger.Debugf("yarn version command failed: %s, out: %s", err, out)
-		return false
-	}
-
-	logger.Infof("Yarn is already installed at: %s", pth)
-	fmt.Println()
-	logger.Infof("Yarn version:")
-	logger.Printf(out)
-
-	return true
-}
-
-func installYarn() error {
-	logger.Infof("Yarn not installed. Installing...")
-	installCmd := getInstallYarnCommand()
-
-	fmt.Println()
-	logger.Donef("$ %s", installCmd.PrintableCommandArgs())
+	logger.Infof("Using Yarn from PATH (managed by Corepack): %s", pth)
 	fmt.Println()
 
-	if err := installCmd.Run(); err != nil {
-		var exitErr *command.ExitStatusError
-		if errors.As(err, &exitErr) {
-			return fmt.Errorf("installing yarn failed: %s", err)
-		}
-		return fmt.Errorf("failed to run command: %s", err)
-	}
+	printPackageManagerInfo(workDir)
 
-	return nil
-}
+	printYarnrcInfo(workDir)
 
-func printYarnVersion(workDir string) error {
 	logger.Infof("Yarn version:")
 	versionCmd := cmdFactory.Create("yarn", []string{"--version"}, &command.Opts{
 		Dir:    workDir,
@@ -160,13 +123,108 @@ func printYarnVersion(workDir string) error {
 	fmt.Println()
 	logger.Donef("$ %s", versionCmd.PrintableCommandArgs())
 	fmt.Println()
+
 	if err := versionCmd.Run(); err != nil {
-		var exitErr *command.ExitStatusError
-		if errors.As(err, &exitErr) {
-			return fmt.Errorf("yarn version command failed: %s", err)
-		}
-		return fmt.Errorf("failed to run command: %s", err)
+		return fmt.Errorf("yarn version command: %s", err)
 	}
+
+	return nil
+}
+
+func printPackageManagerInfo(workDir string) {
+	packageJSONPath := filepath.Join(workDir, "package.json")
+	data, err := os.ReadFile(packageJSONPath)
+	if err != nil {
+		logger.Debugf("Could not read package.json: %s", err)
+		return
+	}
+
+	var packageJSON map[string]interface{}
+	if err := json.Unmarshal(data, &packageJSON); err != nil {
+		logger.Debugf("Could not parse package.json: %s", err)
+		return
+	}
+
+	if packageManager, ok := packageJSON["packageManager"].(string); ok {
+		logger.Infof("package.json specifies packageManager: %s", packageManager)
+		fmt.Println()
+	} else {
+		logger.Debugf("No packageManager field found in package.json")
+	}
+}
+
+func printYarnrcInfo(workDir string) {
+	yarnrcPath := filepath.Join(workDir, ".yarnrc")
+	if data, err := os.ReadFile(yarnrcPath); err == nil {
+		logger.Infof(".yarnrc file found (Yarn 1.x config):")
+		logger.Printf(strings.TrimSpace(string(data)))
+		fmt.Println()
+		return
+	}
+
+	yarnrcYmlPath := filepath.Join(workDir, ".yarnrc.yml")
+	if _, err := os.Stat(yarnrcYmlPath); err == nil {
+		logger.Infof(".yarnrc.yml file found (Yarn 2+ config)")
+		fmt.Println()
+	}
+}
+
+func ensureCorepack(workDir string) error {
+	logger.Infof("Checking Corepack status...")
+	versionCmd := cmdFactory.Create("corepack", []string{"--version"}, &command.Opts{
+		Dir: workDir,
+	})
+
+	fmt.Println()
+	logger.Donef("$ %s", versionCmd.PrintableCommandArgs())
+	fmt.Println()
+
+	if out, err := versionCmd.RunAndReturnTrimmedCombinedOutput(); err == nil {
+		logger.Printf("Corepack version: %s", out)
+		fmt.Println()
+		return nil
+	}
+
+	logger.Infof("Could not verify Corepack, installing...")
+	installCmd := cmdFactory.Create("npm", []string{"install", "--global", "corepack"}, &command.Opts{
+		Dir: workDir,
+	})
+
+	fmt.Println()
+	logger.Donef("$ %s", installCmd.PrintableCommandArgs())
+	fmt.Println()
+
+	if err := installCmd.Run(); err != nil {
+		return fmt.Errorf("install Corepack: %s", err)
+	}
+
+	fmt.Println()
+	logger.Donef("$ %s", versionCmd.PrintableCommandArgs())
+	fmt.Println()
+
+	if out, err := versionCmd.RunAndReturnTrimmedCombinedOutput(); err == nil {
+		logger.Infof("Corepack installed successfully")
+		logger.Printf("Corepack version: %s", out)
+	} else {
+		return fmt.Errorf("verify Corepack installation: %s", err)
+	}
+	fmt.Println()
+
+	logger.Infof("Enable Corepack...")
+	enableCmd := cmdFactory.Create("corepack", []string{"enable"}, &command.Opts{
+		Dir: workDir,
+	})
+
+	fmt.Println()
+	logger.Donef("$ %s", enableCmd.PrintableCommandArgs())
+	fmt.Println()
+
+	if err := enableCmd.Run(); err != nil {
+		return fmt.Errorf("enable Corepack: %s", err)
+	}
+
+	logger.Infof("Corepack enabled successfully")
+	fmt.Println()
 
 	return nil
 }
