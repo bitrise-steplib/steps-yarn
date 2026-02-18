@@ -10,7 +10,7 @@ description: |-
 
   To use the Step, you need to configure your dependencies in your `package.json` file.
 
-  1. (Optional) Specify the Yarn version in your `package.json`:
+  1. (Recommended) Specify the Yarn version in your `package.json`:
      ```json
      {
        "packageManager": "yarn@4.1.0"
@@ -18,11 +18,11 @@ description: |-
      ```
      If not specified, Corepack will use its default Yarn version.
 
-  2. Set a command in **The yarn command to run** input.
+  1. Set a command in **The yarn command to run** input.
 
      If you leave the input blank, the Step will simply install your dependencies. You can find the other available command in [yarn's documentation](https://yarnpkg.com/lang/en/docs/cli/).
 
-  3. Set the arguments in the **Arguments for running yarn commands** input.
+  1. Set the arguments in the **Arguments for running yarn commands** input.
 
      You can specify multiple arguments. Check out the available arguments for each command in yarn's documentation.
 
