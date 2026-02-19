@@ -29,7 +29,7 @@ workflows:
     steps:
     - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
         inputs:
-        - repository_url: https://github.com/bitrise-io/sample-apps-yarn-workspaces.git
+        - repository_url: https://github.com/bitrise-io/sample-apps-yarn-workspaces
         - branch: master
         - clone_into_dir: ./_tmp
     - script:
@@ -71,18 +71,25 @@ workflows:
 
   test_multiple_arguments:
     description: Test that multiple arguments are passed correctly to the yarn command in a yarn workspace.
+    before_run:
+    - _setup
     steps:
     - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
         inputs:
-        - repository_url: https://github.com/bitrise-io/sample-apps-yarn-workspaces.git
+        - repository_url: https://github.com/bitrise-io/sample-apps-yarn-workspaces
         - branch: master
         - clone_into_dir: ./_tmp
     - path::./.:
-        title: Test with multiple arguments
+        title: Run yarn install
         inputs:
-        - workdir: ./test
-        - command: run test-script
-        - args: --verbose arg1 arg2
+        - workdir: ./_tmp
+        - command: install
+    - path::./.:
+        title: Run yarn start
+        inputs:
+        - workdir: ./_tmp/packages/b
+        - command: start
+        - arguments: --first arg --second "arg with spaces"
 
   test_yarnrc_file:
     description: |
