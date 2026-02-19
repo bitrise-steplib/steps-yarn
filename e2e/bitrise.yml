@@ -29,7 +29,7 @@ workflows:
     steps:
     - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
         inputs:
-        - repository_url: https://github.com/bitrise-samples/sample-apps-react-native-ios-and-android
+        - repository_url: https://github.com/bitrise-io/sample-apps-yarn-workspaces.git
         - branch: master
         - clone_into_dir: ./_tmp
     - script:
@@ -41,17 +41,20 @@ workflows:
             node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('./_tmp/package.json', 'utf8'));
-            pkg.packageManager = 'yarn@4.1.0';
+            pkg.packageManager = 'yarn@3.4.1';
             fs.writeFileSync('./_tmp/package.json', JSON.stringify(pkg, null, 2));
             "
             echo "Updated package.json:"
             cat ./_tmp/package.json
+            # Remove old lockfile since Yarn 3 uses a different format
+            rm -f ./_tmp/yarn.lock
+            # Disable immutable installs in CI to allow lockfile creation
+            envman add --key YARN_ENABLE_IMMUTABLE_INSTALLS --value false
     - path::./.:
         title: Run yarn install with packageManager field
         inputs:
         - workdir: ./_tmp
         - command: install
-        - args: --immutable
     - script:
         title: Verify yarn version
         inputs:
@@ -59,7 +62,7 @@ workflows:
             #!/bin/bash
             set -ex
             ACTUAL=$(cd ./_tmp && yarn --version)
-            EXPECTED="4.1.0"
+            EXPECTED="3.4.1"
             if [ "$ACTUAL" != "$EXPECTED" ]; then
               echo "Expected yarn $EXPECTED, got $ACTUAL"
               exit 1
@@ -101,7 +104,6 @@ workflows:
             set -ex
             cat > ./_tmp/.yarnrc << 'EOF'
             # Yarn 1.x configuration
-            --install.frozen-lockfile true
             --install.silent false
             EOF
             echo "Created .yarnrc:"
@@ -118,12 +120,15 @@ workflows:
             pkg.packageManager = 'yarn@1.22.22';
             fs.writeFileSync('./_tmp/package.json', JSON.stringify(pkg, null, 2));
             "
+            # Remove old lockfile to allow Yarn to create a fresh one
+            rm -f ./_tmp/yarn.lock
+            # Disable immutable installs in CI to allow lockfile creation
+            envman add --key YARN_ENABLE_IMMUTABLE_INSTALLS --value false
     - path::./.:
         title: Run yarn install with .yarnrc
         inputs:
         - workdir: ./_tmp
         - command: install
-        - args: --immutable
 
   test_yarnrc_yml_file:
     description: |
@@ -162,12 +167,15 @@ workflows:
             pkg.packageManager = 'yarn@4.1.0';
             fs.writeFileSync('./_tmp/package.json', JSON.stringify(pkg, null, 2));
             "
+            # Remove old lockfile since Yarn 4 uses a different format
+            rm -f ./_tmp/yarn.lock
+            # Disable immutable installs in CI to allow lockfile creation
+            envman add --key YARN_ENABLE_IMMUTABLE_INSTALLS --value false
     - path::./.:
         title: Run yarn install with .yarnrc.yml
         inputs:
         - workdir: ./_tmp
         - command: install
-        - args: --immutable
 
   _setup:
     steps:
