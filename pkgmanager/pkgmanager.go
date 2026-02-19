@@ -27,7 +27,13 @@ func NewStep(workDir string, logger log.Logger, cmdFactory command.Factory) *Ste
 }
 
 func (s *Step) ValidateAndPrintYarnInfo(workDir string) error {
-	if err := s.ensureCorepack(workDir); err != nil {
+	// Ensure corepack is up to date
+	if err := EnsureUpToDate(s.cmdFactory, s.logger); err != nil {
+		return err
+	}
+
+	// Enable all package managers (including yarn) via corepack
+	if err := Enable(s.cmdFactory, s.logger); err != nil {
 		return err
 	}
 

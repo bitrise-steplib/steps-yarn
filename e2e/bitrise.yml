@@ -50,7 +50,8 @@ workflows:
         title: Run yarn install with packageManager field
         inputs:
         - workdir: ./_tmp
-        - command: install
+        - command: install 
+        - args: --immutable
     - script:
         title: Verify yarn version
         inputs:
@@ -122,6 +123,7 @@ workflows:
         inputs:
         - workdir: ./_tmp
         - command: install
+        - args:  --immutable
 
   test_yarnrc_yml_file:
     description: |
@@ -165,6 +167,7 @@ workflows:
         inputs:
         - workdir: ./_tmp
         - command: install
+        - args:  --immutable
 
   _setup:
     steps:
