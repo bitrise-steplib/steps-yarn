@@ -28,12 +28,11 @@ func NewStep(workDir string, logger log.Logger, cmdFactory command.Factory) *Ste
 
 func (s *Step) ValidateAndPrintYarnInfo(workDir string) error {
 	// Ensure corepack is up to date
-	if err := EnsureUpToDate(s.cmdFactory, s.logger); err != nil {
+	if err := s.ensureUpToDate(); err != nil {
 		return err
 	}
 
-	// Enable all package managers (including yarn) via corepack
-	if err := Enable(s.cmdFactory, s.logger); err != nil {
+	if err := s.enable(); err != nil {
 		return err
 	}
 
@@ -85,6 +84,7 @@ func (s *Step) printPackageManagerInfo() {
 		fmt.Println()
 	} else {
 		s.logger.Warnf("No packageManager field found in package.json")
+		fmt.Println()
 	}
 }
 

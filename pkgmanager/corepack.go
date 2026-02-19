@@ -2,45 +2,47 @@ package pkgmanager
 
 import (
 	"fmt"
-	"os/exec"
 	"strings"
-
-	"github.com/bitrise-io/go-utils/v2/command"
-	"github.com/bitrise-io/go-utils/v2/log"
 )
 
 // minVersion is the minimum corepack version required to avoid the registry key rotation issue.
 // See: https://github.com/nodejs/corepack/issues/612
 const minVersion = "0.31.0"
 
-// EnsureUpToDate upgrades corepack if the installed version is below minVersion.
+// ensureUpToDate upgrades corepack if the installed version is below minVersion.
 // Older versions have stale registry signing keys that cause verification failures
 // when downloading package manager versions.
-func EnsureUpToDate(cmdFactory command.Factory, logger log.Logger) error {
-	if out, err := exec.Command("corepack", "--version").Output(); err == nil {
-		current := strings.TrimSpace(string(out))
-		if ok, _ := versionAtLeast(current, minVersion); ok {
-			logger.Infof("Corepack %s is up to date (>= %s)", current, minVersion)
+func (s *Step) ensureUpToDate() error {
+	cmd := s.cmdFactory.Create("corepack", []string{"--version"}, nil)
+	out, err := cmd.RunAndReturnTrimmedCombinedOutput()
+	if err == nil {
+		current := strings.TrimSpace(out)
+		ok, vErr := versionAtLeast(current, minVersion)
+		if vErr != nil {
+			s.logger.Debugf("Failed to parse corepack version %q: %s, will upgrade", current, vErr)
+		} else if ok {
+			s.logger.Infof("Corepack %s is up to date (>= %s)", current, minVersion)
 			return nil
+		} else {
+			s.logger.Infof("Corepack %s is outdated (< %s), upgrading", current, minVersion)
 		}
-		logger.Infof("Corepack %s is outdated (< %s), upgrading", current, minVersion)
 	} else {
-		logger.Infof("Corepack not found, installing")
+		s.logger.Infof("Corepack not found, installing")
 	}
 
-	cmd := cmdFactory.Create("npm", []string{"install", "-g", "corepack@latest"}, nil)
-	logger.Donef("$ %s", cmd.PrintableCommandArgs())
-	if out, err := cmd.RunAndReturnTrimmedCombinedOutput(); err != nil {
+	installCmd := s.cmdFactory.Create("npm", []string{"install", "-g", "corepack@latest"}, nil)
+	s.logger.Donef("$ %s", installCmd.PrintableCommandArgs())
+	if out, err := installCmd.RunAndReturnTrimmedCombinedOutput(); err != nil {
 		return fmt.Errorf("failed to install corepack: %s", out)
 	}
 
 	return nil
 }
 
-// Enable runs `corepack enable` to enable all package managers.
-func Enable(cmdFactory command.Factory, logger log.Logger) error {
-	cmd := cmdFactory.Create("corepack", []string{"enable"}, nil)
-	logger.Donef("$ %s", cmd.PrintableCommandArgs())
+// enable runs `corepack enable` to enable all package managers.
+func (s *Step) enable() error {
+	cmd := s.cmdFactory.Create("corepack", []string{"enable"}, nil)
+	s.logger.Donef("$ %s", cmd.PrintableCommandArgs())
 	if out, err := cmd.RunAndReturnTrimmedCombinedOutput(); err != nil {
 		return fmt.Errorf("corepack enable failed: %s", out)
 	}

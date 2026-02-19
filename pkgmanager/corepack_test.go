@@ -2,11 +2,9 @@ package pkgmanager
 
 import (
 	"bytes"
-	"os/exec"
 	"strings"
 	"testing"
 
-	"github.com/bitrise-io/go-utils/v2/command"
 	"github.com/bitrise-io/go-utils/v2/log"
 )
 
@@ -16,12 +14,13 @@ func TestEnsureUpToDate(t *testing.T) {
 		runFunc       func(cmdStr string) (string, error)
 		expectError   bool
 		errorContains string
-		skip          bool
-		skipReason    string
 	}{
 		{
 			name: "corepack up to date",
 			runFunc: func(cmdStr string) (string, error) {
+				if strings.Contains(cmdStr, "corepack") && strings.Contains(cmdStr, "--version") {
+					return "0.31.0", nil
+				}
 				return "", nil
 			},
 			expectError: false,
@@ -29,53 +28,70 @@ func TestEnsureUpToDate(t *testing.T) {
 		{
 			name: "corepack outdated, upgrade succeeds",
 			runFunc: func(cmdStr string) (string, error) {
+				if strings.Contains(cmdStr, "corepack") && strings.Contains(cmdStr, "--version") {
+					return "0.30.0", nil
+				}
 				if strings.Contains(cmdStr, "npm") && strings.Contains(cmdStr, "install") {
 					return "added corepack@latest", nil
 				}
 				return "", nil
 			},
 			expectError: false,
-			skip:        true,
-			skipReason:  "Requires system corepack to be outdated or missing",
 		},
 		{
 			name: "corepack not installed, install succeeds",
 			runFunc: func(cmdStr string) (string, error) {
+				if strings.Contains(cmdStr, "corepack") && strings.Contains(cmdStr, "--version") {
+					return "", &mockExitError{}
+				}
 				if strings.Contains(cmdStr, "npm") && strings.Contains(cmdStr, "install") {
 					return "added corepack@latest", nil
 				}
 				return "", nil
 			},
 			expectError: false,
-			skip:        true,
-			skipReason:  "Requires system corepack to be missing",
 		},
 		{
 			name: "npm install fails",
 			runFunc: func(cmdStr string) (string, error) {
+				if strings.Contains(cmdStr, "corepack") && strings.Contains(cmdStr, "--version") {
+					return "", &mockExitError{}
+				}
 				if strings.Contains(cmdStr, "npm") && strings.Contains(cmdStr, "install") {
-					return "network error", command.NewExitStatusError("npm", &exec.ExitError{}, []string{})
+					return "network error", &mockExitError{}
 				}
 				return "", nil
 			},
 			expectError:   true,
 			errorContains: "failed to install corepack",
-			skip:          true,
-			skipReason:    "Cannot test failure when system corepack is up to date",
+		},
+		{
+			name: "invalid version format triggers upgrade",
+			runFunc: func(cmdStr string) (string, error) {
+				if strings.Contains(cmdStr, "corepack") && strings.Contains(cmdStr, "--version") {
+					return "invalid.version", nil
+				}
+				if strings.Contains(cmdStr, "npm") && strings.Contains(cmdStr, "install") {
+					return "added corepack@latest", nil
+				}
+				return "", nil
+			},
+			expectError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if tt.skip {
-				t.Skip(tt.skipReason)
-			}
-
 			var logBuf bytes.Buffer
 			logger := log.NewLogger(log.WithOutput(&logBuf))
 
 			factory := &mockFactory{runFunc: tt.runFunc}
-			err := EnsureUpToDate(factory, logger)
+			step := &Step{
+				logger:     logger,
+				cmdFactory: factory,
+			}
+
+			err := step.ensureUpToDate()
 
 			if tt.expectError {
 				if err == nil {
@@ -112,7 +128,7 @@ func TestEnable(t *testing.T) {
 			name: "enable fails",
 			runFunc: func(cmdStr string) (string, error) {
 				if strings.Contains(cmdStr, "corepack") && strings.Contains(cmdStr, "enable") {
-					return "permission denied", command.NewExitStatusError("corepack", &exec.ExitError{}, []string{})
+					return "permission denied", &mockExitError{}
 				}
 				return "", nil
 			},
@@ -127,7 +143,12 @@ func TestEnable(t *testing.T) {
 			logger := log.NewLogger(log.WithOutput(&logBuf))
 
 			factory := &mockFactory{runFunc: tt.runFunc}
-			err := Enable(factory, logger)
+			step := &Step{
+				logger:     logger,
+				cmdFactory: factory,
+			}
+
+			err := step.enable()
 
 			if tt.expectError {
 				if err == nil {
@@ -197,4 +218,10 @@ func TestVersionAtLeast_InvalidVersions(t *testing.T) {
 			}
 		})
 	}
+}
+
+type mockExitError struct{}
+
+func (e *mockExitError) Error() string {
+	return "exit status 1"
 }
