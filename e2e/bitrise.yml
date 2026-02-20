@@ -1,30 +1,190 @@
 format_version: "11"
 default_step_lib_source: https://github.com/bitrise-io/bitrise-steplib.git
 
-app:
-  envs:
-  - ORIG_BITRISE_SOURCE_DIR: $BITRISE_SOURCE_DIR
-
 workflows:
-  test_simple:
-    envs:
-    - TEST_REPO_URL: https://github.com/bitrise-samples/react-native-expo.git
-    - TEST_REPO_BRANCH: master
-    - COMMAND: install
-    - ARGS: -d -ll
-    after_run:
-    - _run
+  test_no_version_pinning:
+    description: Step works without any version pinning (no yarn_version input, no packageManager field)
+    before_run:
+    - _setup
+    steps:
+    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+        inputs:
+        - repository_url: https://github.com/bitrise-samples/sample-apps-react-native-ios-and-android
+        - branch: master
+        - clone_into_dir: ./_tmp
+    - path::./.:
+        title: Run yarn install without version pinning
+        inputs:
+        - workdir: ./_tmp
+        - command: install
 
-  test_yarn_workspaces:
-    envs:
-    - TEST_REPO_URL: https://github.com/bitrise-io/sample-apps-yarn-workspaces.git
-    - TEST_REPO_BRANCH: master
-    - COMMAND:
-    - ARGS:
-    after_run:
-    - _run
+  test_packageManager_field:
+    description: |
+      packageManager field in package.json is enforced via corepack.
+      The step runs `corepack enable` to install the yarn shim, then yarn install.
+      The shim enforces the pinned version lazily on the first real yarn invocation.
+      We verify the version after yarn install completes.
+    before_run:
+    - _setup
+    steps:
+    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+        inputs:
+        - repository_url: https://github.com/bitrise-io/sample-apps-yarn-workspaces
+        - branch: master
+        - clone_into_dir: ./_tmp
+    - script:
+        title: Add packageManager field to package.json
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('./_tmp/package.json', 'utf8'));
+            pkg.packageManager = 'yarn@3.4.1';
+            fs.writeFileSync('./_tmp/package.json', JSON.stringify(pkg, null, 2));
+            "
+            echo "Updated package.json:"
+            cat ./_tmp/package.json
+            # Remove old lockfile since Yarn 3 uses a different format
+            rm -f ./_tmp/yarn.lock
+            # Disable immutable installs in CI to allow lockfile creation
+            envman add --key YARN_ENABLE_IMMUTABLE_INSTALLS --value false
+    - path::./.:
+        title: Run yarn install with packageManager field
+        inputs:
+        - workdir: ./_tmp
+        - command: install
+    - script:
+        title: Verify yarn version
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            ACTUAL=$(cd ./_tmp && yarn --version)
+            EXPECTED="3.4.1"
+            if [ "$ACTUAL" != "$EXPECTED" ]; then
+              echo "Expected yarn $EXPECTED, got $ACTUAL"
+              exit 1
+            fi
+            echo "yarn version verified: $ACTUAL"
 
-  _run:
+  test_multiple_arguments:
+    description: Test that multiple arguments are passed correctly to the yarn command in a yarn workspace.
+    before_run:
+    - _setup
+    steps:
+    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+        inputs:
+        - repository_url: https://github.com/bitrise-io/sample-apps-yarn-workspaces
+        - branch: master
+        - clone_into_dir: ./_tmp
+    - path::./.:
+        title: Run yarn install
+        inputs:
+        - workdir: ./_tmp
+        - command: install
+    - path::./.:
+        title: Run yarn start
+        inputs:
+        - workdir: ./_tmp/packages/b
+        - command: start
+        - arguments: --first arg --second "arg with spaces"
+
+  test_yarnrc_file:
+    description: |
+      Test with .yarnrc configuration file (Yarn 1.x).
+      The step should detect and acknowledge the .yarnrc file.
+    before_run:
+    - _setup
+    steps:
+    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+        inputs:
+        - repository_url: https://github.com/bitrise-samples/sample-apps-react-native-ios-and-android
+        - branch: master
+        - clone_into_dir: ./_tmp
+    - script:
+        title: Create .yarnrc file
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            cat > ./_tmp/.yarnrc << 'EOF'
+            # Yarn 1.x configuration
+            --install.silent false
+            EOF
+            echo "Created .yarnrc:"
+            cat ./_tmp/.yarnrc
+    - script:
+        title: Pin to Yarn 1.x in package.json
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('./_tmp/package.json', 'utf8'));
+            pkg.packageManager = 'yarn@1.22.22';
+            fs.writeFileSync('./_tmp/package.json', JSON.stringify(pkg, null, 2));
+            "
+            # Remove old lockfile to allow Yarn to create a fresh one
+            rm -f ./_tmp/yarn.lock
+            # Disable immutable installs in CI to allow lockfile creation
+            envman add --key YARN_ENABLE_IMMUTABLE_INSTALLS --value false
+    - path::./.:
+        title: Run yarn install with .yarnrc
+        inputs:
+        - workdir: ./_tmp
+        - command: install
+
+  test_yarnrc_yml_file:
+    description: |
+      Test with .yarnrc.yml configuration file (Yarn 2+).
+      The step should detect and acknowledge the .yarnrc.yml file.
+    before_run:
+    - _setup
+    steps:
+    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
+        inputs:
+        - repository_url: https://github.com/bitrise-samples/sample-apps-react-native-ios-and-android
+        - branch: master
+        - clone_into_dir: ./_tmp
+    - script:
+        title: Create .yarnrc.yml file
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            cat > ./_tmp/.yarnrc.yml << 'EOF'
+            # Yarn 2+ configuration
+            nodeLinker: node-modules
+            enableGlobalCache: true
+            EOF
+            echo "Created .yarnrc.yml:"
+            cat ./_tmp/.yarnrc.yml
+    - script:
+        title: Pin to Yarn 4.x in package.json
+        inputs:
+        - content: |
+            #!/bin/bash
+            set -ex
+            node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('./_tmp/package.json', 'utf8'));
+            pkg.packageManager = 'yarn@4.1.0';
+            fs.writeFileSync('./_tmp/package.json', JSON.stringify(pkg, null, 2));
+            "
+            # Remove old lockfile since Yarn 4 uses a different format
+            rm -f ./_tmp/yarn.lock
+            # Disable immutable installs in CI to allow lockfile creation
+            envman add --key YARN_ENABLE_IMMUTABLE_INSTALLS --value false
+    - path::./.:
+        title: Run yarn install with .yarnrc.yml
+        inputs:
+        - workdir: ./_tmp
+        - command: install
+
+  _setup:
     steps:
     - script:
         title: Remove leftover _tmp folder
@@ -32,14 +192,4 @@ workflows:
         - content: |
             #!/bin/env bash
             set -ex
-            rm -rf "$ORIG_BITRISE_SOURCE_DIR/_tmp"
-    - git::https://github.com/bitrise-steplib/bitrise-step-simple-git-clone.git:
-        inputs:
-        - repository_url: $TEST_REPO_URL
-        - branch: $TEST_REPO_BRANCH
-        - clone_into_dir: $ORIG_BITRISE_SOURCE_DIR/_tmp
-    - path::./:
-        inputs:
-        - workdir: $ORIG_BITRISE_SOURCE_DIR/_tmp
-        - command: $COMMAND
-        - args: $ARGS
+            rm -rf ./_tmp
